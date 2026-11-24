@@ -11,6 +11,7 @@ const STORE = 'kv';
 const INDEX_KEY = 'plog-projects-index';
 const ACTIVE_KEY = 'plog-active-project';
 const FONTS_KEY = 'plog-user-fonts';
+const STICKERS_KEY = 'plog-user-stickers';
 
 const serif = "'Noto Serif CJK SC','Songti SC',serif";
 const sans = "'Microsoft YaHei','PingFang SC',sans-serif";
@@ -71,6 +72,10 @@ const imgCache = new Map();
 const effectCache = new Map();
 let effectCachePixels = 0;
 const installedFonts = [];
+let stickerLib = { folders: [], stickers: [] };
+let userStickers = [];
+let activeStickerFolder = 'all';
+let stickerQuery = '';
 
 const canvas = $('editCanvas');
 const ctx = canvas.getContext('2d');
@@ -1054,25 +1059,68 @@ function buildPlogLibrary() {
     g1.append(b);
   });
   sec1.append(g1);
+  host.append(sec1);
+}
 
-  const sec2 = document.createElement('div'); sec2.className = 'plog-section';
-  sec2.innerHTML = '<h4>✦ Plog 图案与手账贴纸</h4><p>胶带、拍立得框、邮票框与涂鸦，支持加描边与阴影</p>';
-  const g2 = document.createElement('div'); g2.className = 'plog-chip-grid';
-  PLOG_PATTERNS.forEach(item => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'plog-chip-btn';
-    b.innerHTML = `<b>${item.name}</b><small>${item.desc}</small>`;
-    b.onclick = () => {
-      addElement({
-        id: uid(), type: 'image', src: plogSvgUri(item.svg),
-        x: Math.round((W() - item.w) / 2), y: Math.round((H() - item.h) / 2), w: item.w, h: item.h,
-        fit: 'contain', crop: { x: 0, y: 0, w: 1, h: 1 }, zoom: 1, offsetX: 0, offsetY: 0, rotation: 0, opacity: 1
-      });
-      status(`✓ 已插入图案「${item.name}」`);
-    };
-    g2.append(b);
+async function loadOriginalStickers() {
+  try {
+    const res = await fetch('stickers-index.json');
+    if (res.ok) stickerLib = await res.json();
+  } catch (e) { console.warn('stickers-index load:', e); }
+  renderStickersPanel();
+}
+
+function renderStickersPanel() {
+  const fBar = $('stickerFolders'), grid = $('stickerGrid');
+  if (!fBar || !grid) return;
+  fBar.replaceChildren();
+  grid.replaceChildren();
+
+  const folders = [
+    { id: 'all', name: `全部 (${stickerLib.stickers.length + userStickers.length})` },
+    ...(userStickers.length ? [{ id: 'user', name: `我的导入 (${userStickers.length})` }] : []),
+    ...stickerLib.folders
+  ];
+  folders.forEach(f => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sticker-folder-btn' + (activeStickerFolder === f.id ? ' active' : '');
+    b.textContent = f.name;
+    b.onclick = () => { activeStickerFolder = f.id; renderStickersPanel(); };
+    fBar.append(b);
   });
-  sec2.append(g2);
-  host.append(sec1, sec2);
+
+  const q = stickerQuery.trim().toLowerCase();
+  const all = [
+    ...userStickers.map(s => ({ ...s, folderId: 'user' })),
+    ...stickerLib.stickers
+  ].filter(s => {
+    if (activeStickerFolder !== 'all' && s.folderId !== activeStickerFolder) return false;
+    if (q && !(s.name || '').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  all.forEach(st => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'sticker-card';
+    card.title = st.name;
+    card.innerHTML = `<img loading="lazy" src="${st.src}" alt="${st.name}"><span>${st.name}</span>`;
+    card.onclick = async () => {
+      const img = await getImg(st.src);
+      const iw = img?.width || st.w || 240, ih = img?.height || st.h || 240;
+      const targetW = clamp(Math.round(Math.min(W() * 0.36, iw)), 80, Math.round(W() * 0.65));
+      const targetH = Math.max(40, Math.round(targetW * ih / iw));
+      addElement({
+        id: uid(), type: 'image', src: st.src,
+        x: Math.round((W() - targetW) / 2), y: Math.round((H() - targetH) / 2),
+        w: targetW, h: targetH, fit: 'contain',
+        crop: { x: 0, y: 0, w: 1, h: 1 }, zoom: 1, offsetX: 0, offsetY: 0, rotation: 0, opacity: 1
+      });
+      status(`✓ 已添加素材「${st.name}」`);
+    };
+    grid.append(card);
+  });
 }
 
 // --- Canvas Pointer Interaction ---
@@ -1251,9 +1299,25 @@ function bind() {
     } catch (err) { alert('导入失败：' + err.message); }
   };
 
+  $('stickerSearch').oninput = e => { stickerQuery = e.target.value; renderStickersPanel(); };
+  $('importStickerBtn').onclick = () => $('stickerInput').click();
+  $('stickerInput').onchange = async e => {
+    const files = Array.from(e.target.files || []); e.target.value = '';
+    if (!files.length) return;
+    for (const f of files) {
+      const src = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
+      userStickers.unshift({ id: 'u_' + uid(), name: f.name.replace(/\.[^.]+$/, ''), src });
+    }
+    if (db) await writeDb(STICKERS_KEY, userStickers);
+    activeStickerFolder = 'user';
+    renderStickersPanel();
+    status(`✓ 已导入 ${files.length} 张贴纸到个人素材`);
+  };
+
   document.querySelectorAll('.right-tab').forEach(b => b.onclick = () => {
     document.querySelectorAll('.right-tab').forEach(x => x.classList.toggle('active', x === b));
     $('propsTab').hidden = b.dataset.tab !== 'props';
+    $('stickersTab').hidden = b.dataset.tab !== 'stickers';
     $('plogTab').hidden = b.dataset.tab !== 'plog';
   });
 
@@ -1276,10 +1340,13 @@ async function init() {
     if (saved?.pages?.length) doc = { width: saved.width || 1080, height: saved.height || 1440, pages: saved.pages };
     const fonts = await readDb(FONTS_KEY);
     if (Array.isArray(fonts)) for (const f of fonts) if (f) await registerFontFile(f).catch(() => {});
+    const savedStickers = await readDb(STICKERS_KEY);
+    if (Array.isArray(savedStickers)) userStickers = savedStickers;
   } catch (err) {
     console.warn(err);
     status('本机存储不可用，请使用 JSON 备份');
   }
+  await loadOriginalStickers();
   syncPaperSizeUI();
   renderPagesList();
   renderProps();

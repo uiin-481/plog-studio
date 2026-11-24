@@ -53,7 +53,7 @@ button{cursor:pointer}
 #editCanvas{display:block;max-width:100%;max-height:calc(100dvh - 175px);width:auto;height:auto;background:#fff;box-shadow:0 14px 44px #1f112b26;border-radius:4px;touch-action:none;cursor:default}
 .status-bar{padding:6px 14px;background:var(--surface);border-top:1px solid var(--line);font-size:11px;color:var(--ink-2);display:flex;justify-content:space-between}
 
-.right-tabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.right-tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line);background:var(--surface-2)}
 .right-tab{padding:10px 8px;border:0;background:transparent;font-size:12px;font-weight:700;color:var(--ink-2);border-bottom:2px solid transparent}
 .right-tab.active{color:var(--accent);border-bottom-color:var(--purple);background:#fff}
 .right-scroll{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
@@ -97,6 +97,18 @@ button{cursor:pointer}
 .plog-chip-btn:hover{background:#f3ebf7;border-color:#a582b6}
 .plog-chip-btn b{font-size:11px}
 .plog-chip-btn small{font-size:10px;color:var(--ink-2)}
+
+.sticker-toolbar{display:flex;gap:6px;align-items:center}
+.sticker-toolbar input{flex:1;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:12px}
+.sticker-toolbar button{padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:11px;white-space:nowrap}
+.sticker-folder-bar{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.sticker-folder-btn{flex:0 0 auto;white-space:nowrap;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);border-radius:16px;padding:5px 10px;font-size:11px}
+.sticker-folder-btn.active{background:var(--accent);border-color:var(--accent);color:var(--accent-gold);font-weight:700}
+.sticker-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.sticker-card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);min-width:0}
+.sticker-card:hover{border-color:var(--purple);background:#f4ebf8}
+.sticker-card img{width:64px;height:64px;object-fit:contain;border-radius:4px;background:conic-gradient(#eee 25%,#fff 0 50%,#eee 0 75%,#fff 0) 0 0/12px 12px}
+.sticker-card span{width:100%;font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
 
 /* Photo editor & Projects modal */
 .photo-edit-backdrop{position:fixed;inset:0;z-index:4000;background:rgba(24,16,30,.76);display:flex;align-items:center;justify-content:center;padding:16px}

@@ -95,12 +95,21 @@
   <aside class="plog-right">
    <div class="right-tabs">
     <button type="button" class="right-tab active" data-tab="props">底色与属性</button>
-    <button type="button" class="right-tab" data-tab="plog">模板与图案</button>
+    <button type="button" class="right-tab" data-tab="stickers">手帐素材</button>
+    <button type="button" class="right-tab" data-tab="plog">文字模板</button>
    </div>
    <section id="propsTab" class="right-scroll">
     <div id="elementProps" class="props-box"></div>
-    <div class="layers-head">当前页图层（点击选中 · 可拖动调整顺序）</div>
+    <div class="layers-head">当前页图层（点击选中）</div>
     <div id="layersList" class="layers-list"></div>
+   </section>
+   <section id="stickersTab" class="right-scroll" hidden>
+    <div class="sticker-toolbar">
+     <input type="search" id="stickerSearch" placeholder="搜索 309 件原版手帐素材…" aria-label="搜索手帐素材">
+     <button type="button" id="importStickerBtn" class="accent-btn">＋ 导入贴纸</button>
+    </div>
+    <div id="stickerFolders" class="sticker-folder-bar"></div>
+    <div id="stickerGrid" class="sticker-grid"></div>
    </section>
    <section id="plogTab" class="right-scroll" hidden>
     <div id="plogLibrary"></div>
@@ -110,6 +119,7 @@
 </div>
 
 <input hidden id="photoInput" type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif">
+<input hidden id="stickerInput" type="file" multiple accept="image/png,image/webp,image/jpeg,image/svg+xml">
 <input hidden id="replacePhotoInput" type="file" accept="image/jpeg,image/png,image/webp,image/avif">
 <input hidden id="fontInput" type="file" multiple accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2">
 <input hidden id="jsonInput" type="file" accept=".json,application/json">
