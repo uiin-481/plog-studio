@@ -12,6 +12,7 @@ const INDEX_KEY = 'plog-projects-index';
 const ACTIVE_KEY = 'plog-active-project';
 const FONTS_KEY = 'plog-user-fonts';
 const STICKERS_KEY = 'plog-user-stickers';
+const PANEL_KEY = 'plog-panel-widths';
 
 const serif = "'Noto Serif CJK SC','Songti SC',serif";
 const sans = "'Microsoft YaHei','PingFang SC',sans-serif";
@@ -54,6 +55,14 @@ const PLOG_TEXT_PRESETS = [
 const PLOG_ATMOSPHERES = [
   ['none', '无光影叠加'], ['leak-warm', '暖橙胶片漏光'], ['leak-pink', '粉紫梦幻光晕'], ['paper-fold', '纸张折痕做旧'], ['film-grain', '全页胶片颗粒']
 ];
+const PLOG_BLEND_MODES = [
+  ['source-over', '正常'],
+  ['screen', '滤色（剪影双曝）'],
+  ['lighten', '变亮（光斑叠加）'],
+  ['multiply', '正片叠底（暗纹）'],
+  ['soft-light', '柔光（胶片残影）'],
+  ['overlay', '叠加（高对比）']
+];
 const PLOG_LAYOUTS = [
   { name: '上下双图', desc: '上下均衡双拼', slots: () => [[0.08, 0.06, 0.84, 0.42], [0.08, 0.52, 0.84, 0.42]] },
   { name: '左右双图', desc: '双栏对称留白', slots: () => [[0.06, 0.14, 0.42, 0.72], [0.52, 0.14, 0.42, 0.72]] },
@@ -71,7 +80,7 @@ const blankPage = () => ({ bg: '#f6f4f0', bgPattern: 'none', atmosphere: 'none',
 let db = null, dbReady = false, pendingSave = 0;
 let doc = { width: 1080, height: 1440, grid9: false, grid9Gap: 0, pages: [blankPage()] };
 let current = 0, selected = -1, selectedIds = new Set(), drag = null;
-let snapGuides = [], canvasZoom = 0, doodleMode = false, doodlePts = null;
+let snapGuides = [], canvasZoom = 0, spacePan = false, doodleMode = false, doodlePts = null;
 let undoStack = [], redoStack = [];
 const imgCache = new Map();
 const effectCache = new Map();
@@ -191,17 +200,29 @@ function syncPaperSizeUI() {
   applyCanvasZoom();
 }
 
-function applyCanvasZoom() {
+function applyCanvasZoom(keepCenter = false) {
+  const wrap = canvas.parentElement;
+  const stage = wrap?.parentElement;
+  const prevRx = stage && stage.scrollWidth ? (stage.scrollLeft + stage.clientWidth / 2) / stage.scrollWidth : 0.5;
+  const prevRy = stage && stage.scrollHeight ? (stage.scrollTop + stage.clientHeight / 2) / stage.scrollHeight : 0.5;
   if (!canvasZoom) {
     canvas.classList.remove('zoomed');
+    wrap?.classList.remove('zoomed');
     canvas.style.width = '';
     canvas.style.height = '';
     if ($('zoomLabel')) $('zoomLabel').textContent = '适配';
   } else {
     canvas.classList.add('zoomed');
+    wrap?.classList.add('zoomed');
     canvas.style.width = Math.round(W() * canvasZoom) + 'px';
     canvas.style.height = Math.round(H() * canvasZoom) + 'px';
     if ($('zoomLabel')) $('zoomLabel').textContent = Math.round(canvasZoom * 100) + '%';
+  }
+  if (keepCenter && canvasZoom && stage) {
+    requestAnimationFrame(() => {
+      stage.scrollLeft = Math.max(0, prevRx * stage.scrollWidth - stage.clientWidth / 2);
+      stage.scrollTop = Math.max(0, prevRy * stage.scrollHeight - stage.clientHeight / 2);
+    });
   }
 }
 
@@ -227,15 +248,15 @@ function syncGrid9UI() {
 function setGrid9Mode(on, ensureSquare = true) {
   doc.grid9 = !!on;
   if (doc.grid9 && ensureSquare && W() !== H()) {
-    doc.width = 1800;
-    doc.height = 1800;
+    doc.width = 2400;
+    doc.height = 2400;
     syncPaperSizeUI();
     renderPagesList();
   }
   syncGrid9UI();
   persist();
   redraw();
-  status(doc.grid9 ? '⊞ 九宫格辅助线已开启：拖动可吸附至 3×3 网格，完成后点“导出九宫格”' : '✓ 已关闭九宫格辅助线');
+  status(doc.grid9 ? '⊞ 九宫格辅助线已开启：可用 100%/Ctrl+滚轮完整放大，空格拖动平移' : '✓ 已关闭九宫格辅助线');
 }
 
 function setDoodleMode(on) {
@@ -298,8 +319,8 @@ function drawDoodleStroke(c, pts, style, color, size, ox = 0, oy = 0) {
 }
 
 function setPaperSize(w, h) {
-  w = clamp(Math.round(Number(w) || 1080), 300, 2400);
-  h = clamp(Math.round(Number(h) || 1440), 300, 3200);
+  w = clamp(Math.round(Number(w) || 1080), 300, 6000);
+  h = clamp(Math.round(Number(h) || 1440), 300, 8000);
   doc.width = w;
   doc.height = h;
   syncPaperSizeUI();
@@ -646,6 +667,7 @@ function paintPage(page, target, scale = 1) {
     c.translate(el.x + el.w / 2, el.y + el.h / 2);
     c.rotate((el.rotation || 0) * Math.PI / 180);
     c.globalAlpha = el.opacity ?? 1;
+    c.globalCompositeOperation = el.blend || 'source-over';
     const x = -el.w / 2, y = -el.h / 2;
     if (el.type === 'text') {
       const size = el.size || 44;
@@ -1278,7 +1300,7 @@ function showProjectsManager() {
      <h3>＋ 创建新 Plog 作品</h3>
      <div class="book-create-grid">
       <label>作品名称<input type="text" data-new-title value="新 Plog 日记"></label>
-      <label>画纸尺寸<select data-new-size><option value="1080x1440" selected>小红书 3:4 (1080×1440)</option><option value="1080x1920">手机长图 9:16 (1080×1920)</option><option value="1800x1800">九宫格拼图 1:1 (1800×1800)</option><option value="1200x1200">正方形 1:1 (1200×1200)</option><option value="1440x1080">横版 4:3 (1440×1080)</option></select></label>
+      <label>画纸尺寸<select data-new-size><option value="1080x1440" selected>小红书 3:4 (1080×1440)</option><option value="1080x1920">手机长图 9:16 (1080×1920)</option><option value="1800x1800">九宫格拼图 1:1 (1800×1800)</option><option value="2400x2400">九宫格超清 1:1 (2400×2400)</option><option value="3600x3600">九宫格巨幅 1:1 (3600×3600)</option><option value="2400x3200">超大画布 3:4 (2400×3200)</option><option value="1200x1200">正方形 1:1 (1200×1200)</option><option value="1440x1080">横版 4:3 (1440×1080)</option></select></label>
      </div>
      <div class="photo-edit-buttons"><button type="button" data-action="create" class="photo-edit-primary">＋ 创建并打开</button></div>
     </div>
@@ -1435,6 +1457,13 @@ function renderProps() {
       grid.append(field(n, k, k === 'opacity' ? (el[k] ?? 1) : Math.round(el[k] || 0), 'number', v => modify(() => { el[k] = k === 'opacity' ? clamp(+v, 0, 1) : +v; })));
     });
     panel.append(grid);
+
+    const bWrap = document.createElement('label'); bWrap.className = 'prop-line'; bWrap.textContent = '图层混合模式（双重曝光可用「滤色 / 柔光」）';
+    const bSel = document.createElement('select');
+    PLOG_BLEND_MODES.forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; bSel.append(o); });
+    bSel.value = el.blend || 'source-over';
+    bSel.onchange = () => modify(() => { el.blend = bSel.value; });
+    bWrap.append(bSel); panel.append(bWrap);
 
     if (el.type === 'text') {
       panel.append(field('文字内容', 'text', el.text, 'textarea'));
@@ -1775,6 +1804,7 @@ async function commitDoodleStroke(pts) {
 }
 
 canvas.addEventListener('pointerdown', e => {
+  if (spacePan || e.button === 1) return;
   const p = locate(e);
   if (doodleMode) {
     doodlePts = [[p.x, p.y]];
@@ -1865,7 +1895,8 @@ async function exportCurrentPage() {
   const btn = $('exportPageBtn'); btn.disabled = true; btn.textContent = '正在生成…';
   try {
     const fmt = $('exportFormat').value === 'jpeg' ? 'jpeg' : 'png';
-    const scale = Number($('exportScale').value) || 1;
+    const rawScale = Number($('exportScale').value) || 1;
+    const scale = Math.min(rawScale, 8192 / Math.max(W(), H()));
     await document.fonts.ready.catch(() => {});
     await ensureImages(activePage());
     const out = document.createElement('canvas');
@@ -1974,7 +2005,8 @@ async function openGrid9ExportModal() {
     const ext = fmt === 'jpeg' ? 'jpg' : 'png';
     const mime = `image/${fmt}`;
     const quality = fmt === 'jpeg' ? 0.94 : 1;
-    const scale = Number($('exportScale').value) || 1;
+    const rawScale = Number($('exportScale').value) || 1;
+    const scale = Math.min(rawScale, 8192 / Math.max(W(), H()));
     await document.fonts.ready.catch(() => {});
     await ensureImages(activePage());
 
@@ -2007,7 +2039,7 @@ async function openGrid9ExportModal() {
     backdrop.innerHTML = `<section class="grid9-modal-dialog" role="dialog" aria-modal="true">
      <header class="photo-edit-header"><div><b>九宫格拼接切图预览（1→9 按序发图）</b><small>点击任意单格可单独下载，或一键打包 9 张 PNG/JPG 为 ZIP</small></div><button type="button" data-action="close">✕</button></header>
      <div class="grid9-modal-body">
-      ${nonSquare ? `<div class="grid9-warn">提示：当前画纸为 ${W()}×${H()}（非 1:1 正方形），建议先点击顶部“设为 1800×1800 正方形”避免单格被压成矩形。</div>` : ''}
+      ${nonSquare ? `<div class="grid9-warn">提示：当前画纸为 ${W()}×${H()}（非 1:1 正方形），建议先点击顶部“设为 2400×2400 正方形”避免单格被压成矩形。</div>` : ''}
       <div class="grid9-preview-grid"></div>
      </div>
      <footer class="photo-edit-footer"><span>单格 ${tiles[0].width}×${tiles[0].height} · ${fmt.toUpperCase()} · 缝隙 ${doc.grid9Gap || 0}px</span><div><button type="button" data-action="save-each">↓ 逐张下载 9 张</button><button type="button" data-action="save-zip" class="photo-edit-primary">📦 一键打包下载 ZIP（9张有序）</button></div></footer>
@@ -2062,6 +2094,388 @@ async function openGrid9ExportModal() {
   }
 }
 
+function initPanelResizers() {
+  const body = document.querySelector('.plog-body');
+  if (!body) return;
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(PANEL_KEY) || '{}'); } catch (_) {}
+  let leftW = Number.isFinite(saved.left) ? saved.left : 196;
+  let rightW = Number.isFinite(saved.right) ? saved.right : 316;
+  let lastLeft = leftW > 0 ? leftW : 196;
+  let lastRight = rightW > 0 ? rightW : 316;
+
+  const apply = (save = true) => {
+    body.style.setProperty('--left-w', leftW + 'px');
+    body.style.setProperty('--right-w', rightW + 'px');
+    $('focusCanvasBtn')?.classList.toggle('active', leftW === 0 && rightW === 0);
+    if (save) try { localStorage.setItem(PANEL_KEY, JSON.stringify({ left: leftW, right: rightW })); } catch (_) {}
+  };
+  apply(false);
+
+  const wireHandle = (handleId, isLeft) => {
+    const el = $(handleId);
+    if (!el) return;
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = isLeft ? leftW : rightW;
+      el.classList.add('dragging');
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      const onMove = ev => {
+        const delta = isLeft ? (ev.clientX - startX) : (startX - ev.clientX);
+        const raw = startW + delta;
+        if (isLeft) {
+          leftW = raw < 70 ? 0 : clamp(Math.round(raw), 140, 380);
+          if (leftW > 0) lastLeft = leftW;
+        } else {
+          rightW = raw < 110 ? 0 : clamp(Math.round(raw), 240, 560);
+          if (rightW > 0) lastRight = rightW;
+        }
+        apply(false);
+      };
+      const onUp = () => {
+        el.classList.remove('dragging');
+        apply(true);
+        el.removeEventListener('pointermove', onMove);
+        el.removeEventListener('pointerup', onUp);
+        el.removeEventListener('pointercancel', onUp);
+      };
+      el.addEventListener('pointermove', onMove);
+      el.addEventListener('pointerup', onUp);
+      el.addEventListener('pointercancel', onUp);
+    });
+    el.addEventListener('dblclick', () => {
+      if (isLeft) leftW = leftW === 0 ? (lastLeft || 196) : 0;
+      else rightW = rightW === 0 ? (lastRight || 316) : 0;
+      apply(true);
+    });
+  };
+
+  wireHandle('resizerLeft', true);
+  wireHandle('resizerRight', false);
+
+  if ($('focusCanvasBtn')) {
+    $('focusCanvasBtn').onclick = () => {
+      if (leftW === 0 && rightW === 0) {
+        leftW = lastLeft || 196;
+        rightW = lastRight || 316;
+      } else {
+        if (leftW > 0) lastLeft = leftW;
+        if (rightW > 0) lastRight = rightW;
+        leftW = 0;
+        rightW = 0;
+      }
+      apply(true);
+      status(leftW === 0 && rightW === 0 ? '⤢ 已进入专注画布模式（再次点击恢复侧栏）' : '✓ 已恢复工作区侧栏');
+    };
+  }
+}
+
+async function showDoubleExposureModal() {
+  const curEl = activePage().elements[selected];
+  const origImgEl = curEl?.type === 'image' ? curEl : null;
+  let baseImg = origImgEl ? await getImg(origImgEl.src) : null;
+  let overlayImg = null;
+
+  const state = {
+    blend: 'screen', opacity: 0.88, scale: 1, ox: 0, oy: 0,
+    bw: false, contrast: 108, warmth: 0,
+    tool: 'move', brushSize: 64, feather: 0.72
+  };
+
+  let maskCvs = document.createElement('canvas');
+  let maskCtx = maskCvs.getContext('2d', { willReadFrequently: true });
+  let maskHist = [];
+  const initMask = () => {
+    const bw = baseImg ? clamp(baseImg.width, 600, 1400) : 900;
+    const bh = baseImg ? Math.max(400, Math.round(bw * baseImg.height / baseImg.width)) : 900;
+    maskCvs.width = bw; maskCvs.height = bh;
+    maskCtx.globalCompositeOperation = 'source-over';
+    maskCtx.fillStyle = '#ffffff';
+    maskCtx.fillRect(0, 0, bw, bh);
+    maskHist = [];
+  };
+  initMask();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'photo-edit-backdrop';
+  backdrop.innerHTML = `<section class="de-modal-dialog" role="dialog" aria-modal="true">
+   <header class="photo-edit-header"><div><b>✦ 双重曝光摄影工坊</b><small>两张照片虚实交叠 · 支持剪影滤色、柔光残影与柔边擦除五官</small></div><button type="button" data-action="close">✕</button></header>
+   <div class="photo-edit-content">
+    <div class="photo-edit-viewport"><canvas width="640" height="500"></canvas></div>
+    <aside class="photo-edit-settings">
+     <strong class="pe-title">1. 选择底图与叠加图</strong>
+     <div class="de-upload-row">
+      <button type="button" data-pick="base">🖼 ${baseImg ? '更换底图' : '上传底图（人像/剪影）'}</button>
+      <button type="button" data-pick="overlay">✨ 上传叠加图（风景/光斑）</button>
+     </div>
+     <input hidden type="file" data-file="base" accept="image/*">
+     <input hidden type="file" data-file="overlay" accept="image/*">
+     <strong class="pe-title">2. 一键摄影预设</strong>
+     <div class="de-presets">
+      <button type="button" data-preset="silhouette">侧脸剪影滤色</button>
+      <button type="button" data-preset="ghost">胶片残影柔光</button>
+      <button type="button" data-preset="bw">黑白电影双曝</button>
+      <button type="button" data-preset="warm">暖色光斑叠加</button>
+     </div>
+     <strong class="pe-title">3. 融合与调色</strong>
+     <label>混合模式<select data-de="blend"><option value="screen">滤色 Screen（亮背景剪影推荐）</option><option value="soft-light">柔光 Soft Light（通透残影）</option><option value="lighten">变亮 Lighten（光斑/夜景）</option><option value="multiply">正片叠底 Multiply（深色纹样）</option><option value="overlay">叠加 Overlay（高反差）</option></select></label>
+     <label>叠加不透明度 <strong data-val="opacity">88%</strong><input type="range" data-de="opacity" min="0.1" max="1" step="0.01" value="0.88"></label>
+     <label>叠加缩放 <strong data-val="scale">100%</strong><input type="range" data-de="scale" min="0.4" max="2.6" step="0.02" value="1"></label>
+     <label>反差对比度 <strong data-val="contrast">108%</strong><input type="range" data-de="contrast" min="70" max="160" step="1" value="108"></label>
+     <label>暖调氛围 <strong data-val="warmth">0</strong><input type="range" data-de="warmth" min="0" max="60" step="1" value="0"></label>
+     <label class="pe-shadow-toggle"><input type="checkbox" data-de="bw"> 黑白高级质感（统一色温）</label>
+     <strong class="pe-title">4. 画布交互与柔边擦除五官</strong>
+     <div class="de-tool-row">
+      <button type="button" data-tool="move" class="active">✋ 拖动叠加图</button>
+      <button type="button" data-tool="erase">🖌 柔边擦除</button>
+      <button type="button" data-tool="restore">↩ 恢复显示</button>
+     </div>
+     <label>画笔大小 <strong data-val="brushSize">64px</strong><input type="range" data-de="brushSize" min="14" max="180" step="2" value="64"></label>
+     <div class="photo-edit-buttons"><button type="button" data-action="undo-mask">↶ 撤销擦除</button><button type="button" data-action="reset-mask">重置擦除区</button></div>
+    </aside>
+   </div>
+   <footer class="photo-edit-footer"><span data-note>拖动可错位构图；用“柔边擦除”把眼睛五官轻擦露出来</span><div><button type="button" data-action="cancel">取消</button>${origImgEl ? '<button type="button" data-action="replace">↻ 替换当前图片</button>' : ''}<button type="button" data-action="insert" class="photo-edit-primary">＋ 插入到画布</button></div></footer>
+  </section>`;
+  document.body.append(backdrop);
+
+  const qa = q => backdrop.querySelector(q);
+  const cvs = qa('canvas'), ctx2 = cvs.getContext('2d');
+  let dragOp = null;
+
+  const drawCover = (gc, img, x, y, w, h, exScale = 1, dx = 0, dy = 0) => {
+    const s = Math.max(w / img.width, h / img.height) * exScale;
+    const dw = img.width * s, dh = img.height * s;
+    gc.save();
+    gc.beginPath(); gc.rect(x, y, w, h); gc.clip();
+    gc.drawImage(img, x + (w - dw) / 2 + dx, y + (h - dh) / 2 + dy, dw, dh);
+    gc.restore();
+  };
+
+  const renderComposite = (target, tw, th, vx = 0, vy = 0, vw = tw, vh = th) => {
+    const gc = target.getContext('2d');
+    gc.clearRect(0, 0, tw, th);
+    if (!vx && !vy) {
+      gc.fillStyle = '#ffffff';
+      gc.fillRect(0, 0, tw, th);
+    } else {
+      gc.fillStyle = '#ece6ef';
+      gc.fillRect(0, 0, tw, th);
+      gc.fillStyle = '#ffffff';
+      gc.fillRect(vx, vy, vw, vh);
+    }
+    const fBase = [state.bw ? 'grayscale(100%)' : '', `contrast(${state.contrast}%)`, state.warmth ? `sepia(${Math.round(state.warmth * 0.45)}%)` : ''].filter(Boolean).join(' ') || 'none';
+    if (baseImg) {
+      gc.save(); gc.filter = fBase;
+      drawCover(gc, baseImg, vx, vy, vw, vh, 1, 0, 0);
+      gc.restore();
+    } else {
+      gc.save();
+      gc.fillStyle = '#8b7b92';
+      gc.font = '600 18px sans-serif';
+      gc.textAlign = 'center'; gc.textBaseline = 'middle';
+      gc.fillText('请先在右侧上传「底图」与「叠加图」', tw / 2, th / 2);
+      gc.restore();
+    }
+    if (overlayImg) {
+      const tmp = document.createElement('canvas');
+      tmp.width = Math.max(1, Math.round(vw)); tmp.height = Math.max(1, Math.round(vh));
+      const tc = tmp.getContext('2d');
+      tc.filter = fBase;
+      const ratio = tmp.width / 460;
+      drawCover(tc, overlayImg, 0, 0, tmp.width, tmp.height, state.scale, state.ox * ratio, state.oy * ratio);
+      tc.filter = 'none';
+      tc.globalCompositeOperation = 'destination-in';
+      tc.drawImage(maskCvs, 0, 0, tmp.width, tmp.height);
+
+      gc.save();
+      gc.beginPath(); gc.rect(vx, vy, vw, vh); gc.clip();
+      gc.globalCompositeOperation = state.blend;
+      gc.globalAlpha = state.opacity;
+      gc.drawImage(tmp, vx, vy, vw, vh);
+      gc.restore();
+    }
+    if (state.warmth > 0 && baseImg) {
+      gc.save();
+      gc.globalCompositeOperation = 'soft-light';
+      gc.fillStyle = `rgba(255, 168, 92, ${clamp(state.warmth / 180, 0, 0.35)})`;
+      gc.fillRect(vx, vy, vw, vh);
+      gc.restore();
+    }
+  };
+
+  const getView = () => {
+    const bw = baseImg ? baseImg.width : (overlayImg ? overlayImg.width : 900);
+    const bh = baseImg ? baseImg.height : (overlayImg ? overlayImg.height : 900);
+    const sc = Math.min(600 / bw, 460 / bh);
+    const vw = bw * sc, vh = bh * sc;
+    return { x: (640 - vw) / 2, y: (500 - vh) / 2, w: vw, h: vh };
+  };
+
+  const drawPreview = () => {
+    const v = getView();
+    renderComposite(cvs, 640, 500, v.x, v.y, v.w, v.h);
+  };
+
+  const syncUI = () => {
+    qa('[data-de="blend"]').value = state.blend;
+    qa('[data-de="opacity"]').value = state.opacity;
+    qa('[data-val="opacity"]').textContent = Math.round(state.opacity * 100) + '%';
+    qa('[data-de="scale"]').value = state.scale;
+    qa('[data-val="scale"]').textContent = Math.round(state.scale * 100) + '%';
+    qa('[data-de="contrast"]').value = state.contrast;
+    qa('[data-val="contrast"]').textContent = state.contrast + '%';
+    qa('[data-de="warmth"]').value = state.warmth;
+    qa('[data-val="warmth"]').textContent = state.warmth;
+    qa('[data-de="bw"]').checked = state.bw;
+    qa('[data-de="brushSize"]').value = state.brushSize;
+    qa('[data-val="brushSize"]').textContent = state.brushSize + 'px';
+    backdrop.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === state.tool));
+  };
+
+  const loadUpload = (file, targetKind) => new Promise(res => {
+    const fr = new FileReader();
+    fr.onload = async () => {
+      const im = await getImg(fr.result);
+      if (targetKind === 'base') { baseImg = im; initMask(); qa('[data-pick="base"]').textContent = '🖼 更换底图'; }
+      else { overlayImg = im; qa('[data-pick="overlay"]').textContent = '✨ 更换叠加图'; }
+      drawPreview(); res();
+    };
+    fr.readAsDataURL(file);
+  });
+
+  qa('[data-pick="base"]').onclick = () => qa('[data-file="base"]').click();
+  qa('[data-pick="overlay"]').onclick = () => qa('[data-file="overlay"]').click();
+  qa('[data-file="base"]').onchange = e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) loadUpload(f, 'base'); };
+  qa('[data-file="overlay"]').onchange = e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) loadUpload(f, 'overlay'); };
+
+  const presets = {
+    silhouette: { blend: 'screen', opacity: 0.92, bw: false, contrast: 112, warmth: 0 },
+    ghost: { blend: 'soft-light', opacity: 0.78, bw: false, contrast: 104, warmth: 18 },
+    bw: { blend: 'screen', opacity: 0.88, bw: true, contrast: 122, warmth: 0 },
+    warm: { blend: 'lighten', opacity: 0.84, bw: false, contrast: 106, warmth: 35 }
+  };
+  backdrop.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+    Object.assign(state, presets[b.dataset.preset]);
+    syncUI(); drawPreview();
+  });
+
+  backdrop.querySelectorAll('[data-de]').forEach(inp => inp.addEventListener('input', () => {
+    const k = inp.dataset.de;
+    state[k] = inp.type === 'checkbox' ? inp.checked : (k === 'blend' ? inp.value : Number(inp.value));
+    syncUI(); drawPreview();
+  }));
+  backdrop.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => {
+    state.tool = b.dataset.tool;
+    syncUI();
+  });
+  qa('[data-action="undo-mask"]').onclick = () => {
+    if (!maskHist.length) return;
+    maskCtx.putImageData(maskHist.pop(), 0, 0);
+    drawPreview();
+  };
+  qa('[data-action="reset-mask"]').onclick = () => {
+    maskHist.push(maskCtx.getImageData(0, 0, maskCvs.width, maskCvs.height));
+    if (maskHist.length > 8) maskHist.shift();
+    maskCtx.globalCompositeOperation = 'source-over';
+    maskCtx.fillStyle = '#ffffff';
+    maskCtx.fillRect(0, 0, maskCvs.width, maskCvs.height);
+    drawPreview();
+  };
+
+  const paintSoftMask = (vx, vy, vw, vh, px, py) => {
+    const mx = (px - vx) * maskCvs.width / vw;
+    const my = (py - vy) * maskCvs.height / vh;
+    const rad = Math.max(8, state.brushSize * maskCvs.width / vw * 0.5);
+    maskCtx.save();
+    maskCtx.globalCompositeOperation = state.tool === 'erase' ? 'destination-out' : 'source-over';
+    const g = maskCtx.createRadialGradient(mx, my, rad * (1 - state.feather) * 0.4, mx, my, rad);
+    g.addColorStop(0, 'rgba(255,255,255,0.92)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    maskCtx.fillStyle = g;
+    maskCtx.beginPath(); maskCtx.arc(mx, my, rad, 0, Math.PI * 2); maskCtx.fill();
+    maskCtx.restore();
+  };
+
+  const ptFrom = e => {
+    const r = cvs.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * 640 / r.width, y: (e.clientY - r.top) * 500 / r.height };
+  };
+  cvs.addEventListener('pointerdown', e => {
+    const p = ptFrom(e), v = getView();
+    if (state.tool === 'move') {
+      dragOp = { kind: 'move', sx: p.x, sy: p.y, ox: state.ox, oy: state.oy };
+    } else {
+      maskHist.push(maskCtx.getImageData(0, 0, maskCvs.width, maskCvs.height));
+      if (maskHist.length > 8) maskHist.shift();
+      paintSoftMask(v.x, v.y, v.w, v.h, p.x, p.y);
+      dragOp = { kind: 'brush', v };
+      drawPreview();
+    }
+    try { cvs.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  cvs.addEventListener('pointermove', e => {
+    if (!dragOp) return;
+    const p = ptFrom(e);
+    if (dragOp.kind === 'move') {
+      state.ox = dragOp.ox + (p.x - dragOp.sx);
+      state.oy = dragOp.oy + (p.y - dragOp.sy);
+    } else {
+      paintSoftMask(dragOp.v.x, dragOp.v.y, dragOp.v.w, dragOp.v.h, p.x, p.y);
+    }
+    drawPreview();
+  });
+  cvs.addEventListener('pointerup', () => { dragOp = null; });
+
+  const buildOutputSrc = () => {
+    const ref = baseImg || overlayImg;
+    if (!ref) return null;
+    const scale = Math.min(1, 2000 / Math.max(ref.width, ref.height));
+    const ow = Math.max(100, Math.round(ref.width * scale));
+    const oh = Math.max(100, Math.round(ref.height * scale));
+    const out = document.createElement('canvas');
+    out.width = ow; out.height = oh;
+    renderComposite(out, ow, oh, 0, 0, ow, oh);
+    return { src: out.toDataURL('image/png'), w: ow, h: oh };
+  };
+
+  const close = () => backdrop.remove();
+  qa('[data-action="close"]').onclick = close;
+  qa('[data-action="cancel"]').onclick = close;
+  backdrop.onclick = e => { if (e.target === backdrop) close(); };
+
+  const repBtn = qa('[data-action="replace"]');
+  if (repBtn) {
+    repBtn.onclick = async () => {
+      const res = buildOutputSrc();
+      if (!res || !origImgEl) return alert('请先上传图片再生成');
+      await getImg(res.src);
+      modify(() => { origImgEl.src = res.src; delete origImgEl.role; origImgEl.crop = { x: 0, y: 0, w: 1, h: 1 }; origImgEl.zoom = 1; origImgEl.offsetX = 0; origImgEl.offsetY = 0; });
+      close();
+      status('✓ 已应用双重曝光效果并替换选中图片');
+    };
+  }
+
+  qa('[data-action="insert"]').onclick = async () => {
+    const res = buildOutputSrc();
+    if (!res) return alert('请先上传底图或叠加图');
+    await getImg(res.src);
+    const targetW = Math.min(Math.round(W() * 0.65), res.w);
+    const targetH = Math.max(80, Math.round(targetW * res.h / res.w));
+    addElement({
+      id: uid(), type: 'image', src: res.src,
+      x: Math.round((W() - targetW) / 2), y: Math.round((H() - targetH) / 2),
+      w: targetW, h: targetH, fit: 'contain',
+      crop: { x: 0, y: 0, w: 1, h: 1 }, zoom: 1, offsetX: 0, offsetY: 0, rotation: 0, opacity: 1
+    });
+    close();
+    status('✦ 已生成双重曝光合成图并插入画布');
+  };
+
+  syncUI();
+  drawPreview();
+}
+
 // --- Custom Font Loader ---
 async function registerFontFile(file) {
   const buf = await file.arrayBuffer();
@@ -2099,6 +2513,7 @@ function bind() {
   $('doodleToggle').onclick = () => setDoodleMode(!doodleMode);
   $('doodleDone').onclick = () => setDoodleMode(false);
   $('grid9Toggle').onclick = () => setGrid9Mode(!doc.grid9, true);
+  $('doubleExpBtn').onclick = () => showDoubleExposureModal();
   $('grid9CloseBtn').onclick = () => setGrid9Mode(false, false);
   $('grid9GapSel').onchange = e => {
     doc.grid9Gap = Number(e.target.value) || 0;
@@ -2106,8 +2521,8 @@ function bind() {
     status(doc.grid9Gap ? `⊞ 已设置朋友圈白缝补偿：${doc.grid9Gap}px` : '⊞ 已切换为无缝直切（0px）');
   };
   $('grid9SquareBtn').onclick = () => {
-    setPaperSize(1800, 1800);
-    status('✓ 已设为 1800×1800 九宫格正方形画纸');
+    setPaperSize(2400, 2400);
+    status('✓ 已设为 2400×2400 九宫格超清正方形画纸');
   };
   $('grid9ExportBarBtn').onclick = openGrid9ExportModal;
   $('doodleSize').oninput = e => { $('doodleSizeVal').textContent = e.target.value; };
@@ -2115,10 +2530,43 @@ function bind() {
     b.onclick = () => { $('doodleColor').value = b.dataset.dcolor; };
   });
 
-  const curZoom = () => canvasZoom || clamp(canvas.getBoundingClientRect().width / W(), 0.35, 1.5);
-  $('zoomOut').onclick = () => { canvasZoom = clamp(Math.round((curZoom() - 0.15) * 100) / 100, 0.35, 2.0); applyCanvasZoom(); };
-  $('zoomIn').onclick = () => { canvasZoom = clamp(Math.round((curZoom() + 0.15) * 100) / 100, 0.35, 2.0); applyCanvasZoom(); };
-  $('zoomFit').onclick = () => { canvasZoom = 0; applyCanvasZoom(); };
+  const curZoom = () => canvasZoom || clamp(canvas.getBoundingClientRect().width / W(), 0.2, 1.5);
+  $('zoomOut').onclick = () => { canvasZoom = clamp(Math.round((curZoom() - 0.15) * 100) / 100, 0.2, 3.0); applyCanvasZoom(true); };
+  $('zoomIn').onclick = () => { canvasZoom = clamp(Math.round((curZoom() + 0.15) * 100) / 100, 0.2, 3.0); applyCanvasZoom(true); };
+  $('zoom100').onclick = () => { canvasZoom = 1; applyCanvasZoom(true); };
+  $('zoomFit').onclick = () => { canvasZoom = 0; applyCanvasZoom(false); };
+
+  const stage = document.querySelector('.canvas-stage');
+  if (stage) {
+    let panDrag = null;
+    stage.addEventListener('wheel', e => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.12 : 0.89;
+      canvasZoom = clamp(Math.round(curZoom() * factor * 100) / 100, 0.2, 3.0);
+      applyCanvasZoom(true);
+    }, { passive: false });
+    stage.addEventListener('pointerdown', e => {
+      if (!(spacePan || e.button === 1)) return;
+      e.preventDefault();
+      panDrag = { sx: e.clientX, sy: e.clientY, sl: stage.scrollLeft, st: stage.scrollTop };
+      stage.classList.add('panning-active');
+      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    stage.addEventListener('pointermove', e => {
+      if (!panDrag) return;
+      stage.scrollLeft = panDrag.sl - (e.clientX - panDrag.sx);
+      stage.scrollTop = panDrag.st - (e.clientY - panDrag.sy);
+    });
+    const endPan = () => {
+      if (!panDrag) return;
+      panDrag = null;
+      stage.classList.remove('panning-active');
+    };
+    stage.addEventListener('pointerup', endPan);
+    stage.addEventListener('pointercancel', endPan);
+  }
+  initPanelResizers();
 
   $('undo').onclick = undo;
   $('redo').onclick = redo;
@@ -2216,10 +2664,22 @@ function bind() {
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape' && doodleMode) { setDoodleMode(false); return; }
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+    if (e.code === 'Space' && !document.querySelector('.photo-edit-backdrop')) {
+      e.preventDefault();
+      spacePan = true;
+      document.querySelector('.canvas-stage')?.classList.add('panning');
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') { e.preventDefault(); $('duplicateEl').click(); }
     if (e.key === 'Delete' || e.key === 'Backspace') { if (selectedEntries().length) { e.preventDefault(); $('deleteEl').click(); } }
+  });
+  window.addEventListener('keyup', e => {
+    if (e.code === 'Space') {
+      spacePan = false;
+      document.querySelector('.canvas-stage')?.classList.remove('panning', 'panning-active');
+    }
   });
 }
 

@@ -21,6 +21,7 @@
    <button type="button" id="addShape">＋ 色块</button>
    <button type="button" id="doodleToggle" title="自由涂鸦画笔（马克笔 / 荧光笔 / 蜡笔）">✏ 涂鸦</button>
    <button type="button" id="grid9Toggle" title="开启九宫格拼接辅助线与 1:1 正方形画纸">⊞ 九宫格</button>
+   <button type="button" id="doubleExpBtn" title="两张照片双重曝光融合（滤色/柔光/柔边擦除）">✦ 双重曝光</button>
    <span class="sep"></span>
    <button type="button" id="undo" title="撤销 Ctrl+Z">↶</button>
    <button type="button" id="redo" title="重做 Ctrl+Y">↷</button>
@@ -36,6 +37,9 @@
      <option value="1080x1440" selected>小红书 3:4 (1080×1440)</option>
      <option value="1080x1920">手机长图 9:16 (1080×1920)</option>
      <option value="1800x1800">九宫格拼图 1:1 (1800×1800)</option>
+     <option value="2400x2400">九宫格超清 1:1 (2400×2400)</option>
+     <option value="3600x3600">九宫格巨幅 1:1 (3600×3600)</option>
+     <option value="2400x3200">超大画布 3:4 (2400×3200)</option>
      <option value="1200x1200">正方形 1:1 (1200×1200)</option>
      <option value="1440x1080">横版 4:3 (1440×1080)</option>
      <option value="880x1180">摄影书页 (880×1180)</option>
@@ -43,9 +47,9 @@
     </select>
    </label>
    <div class="size-inputs">
-    <input type="number" id="paperW" min="300" max="2400" step="10" value="1080" aria-label="画纸宽度">
+    <input type="number" id="paperW" min="300" max="6000" step="10" value="1080" aria-label="画纸宽度">
     <span>×</span>
-    <input type="number" id="paperH" min="300" max="3200" step="10" value="1440" aria-label="画纸高度">
+    <input type="number" id="paperH" min="300" max="8000" step="10" value="1440" aria-label="画纸高度">
    </div>
   </div>
 
@@ -83,6 +87,7 @@
     <button type="button" id="importJsonBtn" title="从 JSON 恢复工程">↑ 导入 JSON</button>
    </div>
   </aside>
+  <div id="resizerLeft" class="panel-resizer" title="左右拖动调整页面栏宽度（双击收起/展开）"></div>
 
   <main class="plog-center">
    <div class="canvas-meta">
@@ -92,9 +97,11 @@
      <button type="button" id="zoomOut" title="缩小">－</button>
      <span id="zoomLabel">适配</span>
      <button type="button" id="zoomIn" title="放大">＋</button>
+     <button type="button" id="zoom100" title="100% 原寸查看">100%</button>
      <button type="button" id="zoomFit" title="恢复适配窗口">适配</button>
     </div>
-    <span class="hint">Shift+点击多选 · 拖动自动对齐 · 双击图片精修</span>
+    <button type="button" id="focusCanvasBtn" class="ghost-btn" title="收起/展开左右侧栏以最大化画布">⤢ 专注画布</button>
+    <span class="hint">Ctrl+滚轮缩放 · 空格拖动平移 · Shift+点击多选 · 双击图片精修</span>
    </div>
    <div id="doodleBar" class="doodle-bar" hidden>
     <strong>✏ 涂鸦画笔</strong>
@@ -124,7 +131,7 @@
       <option value="30">宽松白缝补偿（30px）</option>
      </select>
     </label>
-    <button type="button" id="grid9SquareBtn">设为 1800×1800 正方形</button>
+    <button type="button" id="grid9SquareBtn">设为 2400×2400 正方形</button>
     <button type="button" id="grid9ExportBarBtn" class="primary-btn">⊞ 预览并导出 9 张</button>
     <button type="button" id="grid9CloseBtn">关闭辅助线</button>
    </div>
@@ -134,6 +141,7 @@
    <div class="status-bar"><span id="statusText">已就绪 · 自动保存于本机浏览器</span></div>
   </main>
 
+  <div id="resizerRight" class="panel-resizer" title="左右拖动调整右侧栏宽度（双击收起/展开）"></div>
   <aside class="plog-right">
    <div class="right-tabs">
     <button type="button" class="right-tab active" data-tab="props">底色与属性</button>
