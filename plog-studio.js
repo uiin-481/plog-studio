@@ -1467,6 +1467,7 @@ function showProjectsManager() {
 function renderPagesList() {
   const list = $('pageList'); list.replaceChildren();
   $('pageCountLabel').textContent = doc.pages.length + ' 页';
+  if ($('pageLabel')) $('pageLabel').textContent = `第 ${current + 1} 页`;
   doc.pages.forEach((pg, i) => {
     const btn = document.createElement('button');
     btn.className = 'page-item' + (i === current ? ' active' : '');
