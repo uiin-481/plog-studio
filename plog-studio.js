@@ -55,17 +55,21 @@ const PLOG_ATMOSPHERES = [
   ['none', '无光影叠加'], ['leak-warm', '暖橙胶片漏光'], ['leak-pink', '粉紫梦幻光晕'], ['paper-fold', '纸张折痕做旧'], ['film-grain', '全页胶片颗粒']
 ];
 const PLOG_LAYOUTS = [
-  { name: '上下双图', desc: '上下均衡双拼', slots: (w, h) => [[0.08, 0.06, 0.84, 0.42], [0.08, 0.52, 0.84, 0.42]] },
+  { name: '上下双图', desc: '上下均衡双拼', slots: () => [[0.08, 0.06, 0.84, 0.42], [0.08, 0.52, 0.84, 0.42]] },
   { name: '左右双图', desc: '双栏对称留白', slots: () => [[0.06, 0.14, 0.42, 0.72], [0.52, 0.14, 0.42, 0.72]] },
   { name: '三图杂志格', desc: '左大图+右双小图', slots: () => [[0.06, 0.08, 0.50, 0.84], [0.59, 0.08, 0.35, 0.40], [0.59, 0.52, 0.35, 0.40]] },
   { name: '四图田字格', desc: '2×2 整齐四宫格', slots: () => [[0.07, 0.08, 0.41, 0.40], [0.52, 0.08, 0.41, 0.40], [0.07, 0.52, 0.41, 0.40], [0.52, 0.52, 0.41, 0.40]] },
-  { name: '拍立得散落墙', desc: '倾斜拍立得拼贴', polaroid: true, slots: () => [[0.08, 0.08, 0.44, 0.46, -5], [0.46, 0.13, 0.45, 0.46, 4], [0.22, 0.48, 0.50, 0.46, -2]] }
+  { name: '拍立得散落墙', desc: '倾斜拍立得拼贴', polaroid: true, slots: () => [[0.08, 0.08, 0.44, 0.46, -5], [0.46, 0.13, 0.45, 0.46, 4], [0.22, 0.48, 0.50, 0.46, -2]] },
+  { name: '九宫格 9 图写真', desc: '3×3 独立九格', grid9: true, slots: () => [0, 1, 2].flatMap(r => [0, 1, 2].map(c => [c / 3, r / 3, 1 / 3, 1 / 3])) },
+  { name: '九宫格 2×2 主图', desc: '左上大格+5 小格', grid9: true, slots: () => [[0, 0, 2 / 3, 2 / 3], [2 / 3, 0, 1 / 3, 1 / 3], [2 / 3, 1 / 3, 1 / 3, 1 / 3], [0, 2 / 3, 1 / 3, 1 / 3], [1 / 3, 2 / 3, 1 / 3, 1 / 3], [2 / 3, 2 / 3, 1 / 3, 1 / 3]] },
+  { name: '九宫格中排横幅', desc: '中排跨3格+上下6格', grid9: true, slots: () => [[0, 0, 1 / 3, 1 / 3], [1 / 3, 0, 1 / 3, 1 / 3], [2 / 3, 0, 1 / 3, 1 / 3], [0, 1 / 3, 1, 1 / 3], [0, 2 / 3, 1 / 3, 1 / 3], [1 / 3, 2 / 3, 1 / 3, 1 / 3], [2 / 3, 2 / 3, 1 / 3, 1 / 3]] },
+  { name: '九宫格杂志跨格', desc: '大中小错落跨格拼贴', grid9: true, slots: () => [[0, 0, 1 / 3, 2 / 3], [1 / 3, 0, 2 / 3, 1 / 3], [1 / 3, 1 / 3, 1 / 3, 1 / 3], [2 / 3, 1 / 3, 1 / 3, 2 / 3], [0, 2 / 3, 2 / 3, 1 / 3]] }
 ];
 
 const blankPage = () => ({ bg: '#f6f4f0', bgPattern: 'none', atmosphere: 'none', elements: [] });
 
 let db = null, dbReady = false, pendingSave = 0;
-let doc = { width: 1080, height: 1440, pages: [blankPage()] };
+let doc = { width: 1080, height: 1440, grid9: false, grid9Gap: 0, pages: [blankPage()] };
 let current = 0, selected = -1, selectedIds = new Set(), drag = null;
 let snapGuides = [], canvasZoom = 0, doodleMode = false, doodlePts = null;
 let undoStack = [], redoStack = [];
@@ -199,6 +203,39 @@ function applyCanvasZoom() {
     canvas.style.height = Math.round(H() * canvasZoom) + 'px';
     if ($('zoomLabel')) $('zoomLabel').textContent = Math.round(canvasZoom * 100) + '%';
   }
+}
+
+function getGrid9Rects(w, h, gap = 0) {
+  const g = clamp(Number(gap) || 0, 0, Math.floor(Math.min(w, h) * 0.08));
+  const cw = (w - g * 2) / 3, ch = (h - g * 2) / 3;
+  const rects = [];
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      rects.push({ index: r * 3 + c + 1, row: r, col: c, x: c * (cw + g), y: r * (ch + g), w: cw, h: ch });
+    }
+  }
+  return rects;
+}
+
+function syncGrid9UI() {
+  const on = !!doc.grid9;
+  $('grid9Toggle')?.classList.toggle('active', on);
+  if ($('grid9Bar')) $('grid9Bar').hidden = !on;
+  if ($('grid9GapSel')) $('grid9GapSel').value = String(doc.grid9Gap || 0);
+}
+
+function setGrid9Mode(on, ensureSquare = true) {
+  doc.grid9 = !!on;
+  if (doc.grid9 && ensureSquare && W() !== H()) {
+    doc.width = 1800;
+    doc.height = 1800;
+    syncPaperSizeUI();
+    renderPagesList();
+  }
+  syncGrid9UI();
+  persist();
+  redraw();
+  status(doc.grid9 ? '⊞ 九宫格辅助线已开启：拖动可吸附至 3×3 网格，完成后点“导出九宫格”' : '✓ 已关闭九宫格辅助线');
 }
 
 function setDoodleMode(on) {
@@ -769,7 +806,40 @@ function handles(el) {
   };
 }
 
+function paintGrid9Overlay() {
+  if (!doc.grid9) return;
+  const w = W(), h = H(), g = Number(doc.grid9Gap) || 0;
+  const rects = getGrid9Rects(w, h, g);
+  ctx.save();
+  if (g > 0) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+    const x1 = rects[0].x + rects[0].w, x2 = rects[1].x + rects[1].w;
+    const y1 = rects[0].y + rects[0].h, y2 = rects[3].y + rects[3].h;
+    ctx.fillRect(x1, 0, rects[1].x - x1, h);
+    ctx.fillRect(x2, 0, rects[2].x - x2, h);
+    ctx.fillRect(0, y1, w, rects[3].y - y1);
+    ctx.fillRect(0, y2, w, rects[6].y - y2);
+  }
+  ctx.strokeStyle = 'rgba(108, 70, 124, 0.68)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([12, 8]);
+  for (const r of rects) ctx.strokeRect(r.x, r.y, r.w, r.h);
+  ctx.setLineDash([]);
+  ctx.font = '700 20px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const r of rects) {
+    const bx = r.x + 14, by = r.y + 14;
+    ctx.fillStyle = 'rgba(48, 33, 60, 0.72)';
+    ctx.beginPath(); ctx.roundRect(bx, by, 30, 30, 15); ctx.fill();
+    ctx.fillStyle = '#ffefc9';
+    ctx.fillText(String(r.index), bx + 15, by + 16);
+  }
+  ctx.restore();
+}
+
 function paintSelection() {
+  paintGrid9Overlay();
   if (snapGuides.length) {
     ctx.save();
     ctx.strokeStyle = '#e24c7a';
@@ -1208,7 +1278,7 @@ function showProjectsManager() {
      <h3>＋ 创建新 Plog 作品</h3>
      <div class="book-create-grid">
       <label>作品名称<input type="text" data-new-title value="新 Plog 日记"></label>
-      <label>画纸尺寸<select data-new-size><option value="1080x1440" selected>小红书 3:4 (1080×1440)</option><option value="1080x1920">手机长图 9:16 (1080×1920)</option><option value="1200x1200">正方形 1:1 (1200×1200)</option><option value="1440x1080">横版 4:3 (1440×1080)</option></select></label>
+      <label>画纸尺寸<select data-new-size><option value="1080x1440" selected>小红书 3:4 (1080×1440)</option><option value="1080x1920">手机长图 9:16 (1080×1920)</option><option value="1800x1800">九宫格拼图 1:1 (1800×1800)</option><option value="1200x1200">正方形 1:1 (1200×1200)</option><option value="1440x1080">横版 4:3 (1440×1080)</option></select></label>
      </div>
      <div class="photo-edit-buttons"><button type="button" data-action="create" class="photo-edit-primary">＋ 创建并打开</button></div>
     </div>
@@ -1267,7 +1337,7 @@ function showProjectsManager() {
     const [w, h] = backdrop.querySelector('[data-new-size]').value.split('x').map(Number);
     if (db) await writeDb(activeDocKey(), doc);
     const id = 'p_' + uid(), docKey = 'doc:' + id;
-    const newDoc = { width: w || 1080, height: h || 1440, pages: [blankPage()] };
+    const newDoc = { width: w || 1080, height: h || 1440, grid9: w === 1800 && h === 1800, grid9Gap: 0, pages: [blankPage()] };
     if (db) await writeDb(docKey, newDoc);
     const list = getProjectsIndex();
     list.push({ id, title, docKey, width: newDoc.width, height: newDoc.height, updatedAt: Date.now() });
@@ -1496,6 +1566,7 @@ function buildPlogLibrary() {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'plog-chip-btn';
     b.innerHTML = `<b>${lay.name}</b><small>${lay.desc}</small>`;
     b.onclick = () => {
+      if (lay.grid9) setGrid9Mode(true, true);
       const pw = W(), ph = H();
       const slots = lay.slots(pw, ph);
       modify(() => {
@@ -1639,6 +1710,12 @@ function snapElementPosition(el, rawX, rawY, others) {
   const th = 10, guides = [];
   const xs = [W() / 2, 48, W() - 48];
   const ys = [H() / 2, 48, H() - 48];
+  if (doc.grid9) {
+    for (const r of getGrid9Rects(W(), H(), doc.grid9Gap)) {
+      xs.push(r.x, r.x + r.w / 2, r.x + r.w);
+      ys.push(r.y, r.y + r.h / 2, r.y + r.h);
+    }
+  }
   for (const o of others) {
     if (o.hidden) continue;
     xs.push(o.x, o.x + o.w / 2, o.x + o.w);
@@ -1809,6 +1886,182 @@ async function exportCurrentPage() {
   }
 }
 
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(u8) {
+  let c = 0xffffffff;
+  for (let i = 0; i < u8.length; i++) c = (c >>> 8) ^ CRC_TABLE[(c ^ u8[i]) & 0xff];
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function buildZipBlob(entries) {
+  const enc = new TextEncoder();
+  const now = new Date();
+  const dosTime = ((now.getHours() & 31) << 11) | ((now.getMinutes() & 63) << 5) | ((now.getSeconds() >> 1) & 31);
+  const dosDate = (((Math.max(1980, now.getFullYear()) - 1980) & 127) << 9) | (((now.getMonth() + 1) & 15) << 5) | (now.getDate() & 31);
+  const localParts = [], cdParts = [];
+  let offset = 0;
+
+  for (const entry of entries) {
+    const nameBytes = enc.encode(entry.name), data = entry.data, crc = crc32(data);
+    const lh = new Uint8Array(30 + nameBytes.length), lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+    localParts.push(lh, data);
+
+    const ch = new Uint8Array(46 + nameBytes.length), cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    ch.set(nameBytes, 46);
+    cdParts.push(ch);
+
+    offset += lh.length + data.length;
+  }
+
+  const cdSize = cdParts.reduce((s, p) => s + p.length, 0);
+  const eocd = new Uint8Array(22), ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, entries.length, true);
+  ev.setUint16(10, entries.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  ev.setUint16(20, 0, true);
+
+  return new Blob([...localParts, ...cdParts, eocd], { type: 'application/zip' });
+}
+
+async function openGrid9ExportModal() {
+  const b1 = $('exportGrid9Btn'), b2 = $('grid9ExportBarBtn');
+  if (b1) { b1.disabled = true; b1.textContent = '正在切图…'; }
+  if (b2) b2.disabled = true;
+  try {
+    const fmt = $('exportFormat').value === 'jpeg' ? 'jpeg' : 'png';
+    const ext = fmt === 'jpeg' ? 'jpg' : 'png';
+    const mime = `image/${fmt}`;
+    const quality = fmt === 'jpeg' ? 0.94 : 1;
+    const scale = Number($('exportScale').value) || 1;
+    await document.fonts.ready.catch(() => {});
+    await ensureImages(activePage());
+
+    const full = document.createElement('canvas');
+    full.width = Math.round(W() * scale);
+    full.height = Math.round(H() * scale);
+    paintPage(activePage(), full, scale);
+
+    const gapPx = (Number(doc.grid9Gap) || 0) * scale;
+    const rects = getGrid9Rects(full.width, full.height, gapPx);
+    const title = (getActiveProject()?.title || 'Plog').replace(/[\\/:*?"<>|\s]+/g, '_');
+    const tiles = [];
+
+    for (const r of rects) {
+      const x0 = Math.round(r.x), y0 = Math.round(r.y);
+      const tw = Math.max(1, Math.round(r.x + r.w) - x0);
+      const th = Math.max(1, Math.round(r.y + r.h) - y0);
+      const tc = document.createElement('canvas');
+      tc.width = tw; tc.height = th;
+      tc.getContext('2d').drawImage(full, x0, y0, tw, th, 0, 0, tw, th);
+      const blob = await new Promise((res, rej) => tc.toBlob(b => b ? res(b) : rej(Error('切图失败')), mime, quality));
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const url = URL.createObjectURL(blob);
+      tiles.push({ index: r.index, width: tw, height: th, url, bytes, filename: `${title}_P${current + 1}_0${r.index}.${ext}` });
+    }
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'photo-edit-backdrop';
+    const nonSquare = W() !== H();
+    backdrop.innerHTML = `<section class="grid9-modal-dialog" role="dialog" aria-modal="true">
+     <header class="photo-edit-header"><div><b>九宫格拼接切图预览（1→9 按序发图）</b><small>点击任意单格可单独下载，或一键打包 9 张 PNG/JPG 为 ZIP</small></div><button type="button" data-action="close">✕</button></header>
+     <div class="grid9-modal-body">
+      ${nonSquare ? `<div class="grid9-warn">提示：当前画纸为 ${W()}×${H()}（非 1:1 正方形），建议先点击顶部“设为 1800×1800 正方形”避免单格被压成矩形。</div>` : ''}
+      <div class="grid9-preview-grid"></div>
+     </div>
+     <footer class="photo-edit-footer"><span>单格 ${tiles[0].width}×${tiles[0].height} · ${fmt.toUpperCase()} · 缝隙 ${doc.grid9Gap || 0}px</span><div><button type="button" data-action="save-each">↓ 逐张下载 9 张</button><button type="button" data-action="save-zip" class="photo-edit-primary">📦 一键打包下载 ZIP（9张有序）</button></div></footer>
+    </section>`;
+    document.body.append(backdrop);
+
+    const grid = backdrop.querySelector('.grid9-preview-grid');
+    const triggerDownload = (href, download) => {
+      const a = document.createElement('a');
+      a.href = href; a.download = download;
+      document.body.append(a); a.click(); a.remove();
+    };
+
+    tiles.forEach(t => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'grid9-tile';
+      btn.title = `下载第 ${t.index} 张 (${t.filename})`;
+      btn.innerHTML = `<img src="${t.url}" alt="第${t.index}格"><span class="grid9-tile-num">${t.index}</span>`;
+      btn.onclick = () => {
+        triggerDownload(t.url, t.filename);
+        status(`✓ 已下载第 ${t.index} 格（${t.filename}）`);
+      };
+      grid.append(btn);
+    });
+
+    const close = () => {
+      backdrop.remove();
+      tiles.forEach(t => URL.revokeObjectURL(t.url));
+    };
+    backdrop.querySelector('[data-action="close"]').onclick = close;
+    backdrop.onclick = e => { if (e.target === backdrop) close(); };
+    backdrop.querySelector('[data-action="save-each"]').onclick = async () => {
+      for (const t of tiles) {
+        triggerDownload(t.url, t.filename);
+        await new Promise(r => setTimeout(r, 120));
+      }
+      status(`✓ 已逐张下载 9 张九宫格切图（01~09）`);
+    };
+    backdrop.querySelector('[data-action="save-zip"]').onclick = () => {
+      const zipBlob = buildZipBlob(tiles.map(t => ({ name: t.filename, data: t.bytes })));
+      const zipUrl = URL.createObjectURL(zipBlob);
+      triggerDownload(zipUrl, `${title}_P${current + 1}_九宫格_9张.zip`);
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 4000);
+      status(`✓ 已打包导出九宫格 ZIP（9张 ${tiles[0].width}×${tiles[0].height} ${fmt.toUpperCase()}）`);
+    };
+  } catch (err) {
+    alert('九宫格切图失败：' + err.message);
+  } finally {
+    if (b1) { b1.disabled = false; b1.textContent = '⊞ 导出九宫格'; }
+    if (b2) b2.disabled = false;
+  }
+}
+
 // --- Custom Font Loader ---
 async function registerFontFile(file) {
   const buf = await file.arrayBuffer();
@@ -1845,6 +2098,18 @@ function bind() {
   $('addShape').onclick = () => addElement(S(Math.round(W() * 0.25), Math.round(H() * 0.35), Math.round(W() * 0.5), 260, '#e8dfd3', { radius: 16 }));
   $('doodleToggle').onclick = () => setDoodleMode(!doodleMode);
   $('doodleDone').onclick = () => setDoodleMode(false);
+  $('grid9Toggle').onclick = () => setGrid9Mode(!doc.grid9, true);
+  $('grid9CloseBtn').onclick = () => setGrid9Mode(false, false);
+  $('grid9GapSel').onchange = e => {
+    doc.grid9Gap = Number(e.target.value) || 0;
+    persist(); redrawSync();
+    status(doc.grid9Gap ? `⊞ 已设置朋友圈白缝补偿：${doc.grid9Gap}px` : '⊞ 已切换为无缝直切（0px）');
+  };
+  $('grid9SquareBtn').onclick = () => {
+    setPaperSize(1800, 1800);
+    status('✓ 已设为 1800×1800 九宫格正方形画纸');
+  };
+  $('grid9ExportBarBtn').onclick = openGrid9ExportModal;
   $('doodleSize').oninput = e => { $('doodleSizeVal').textContent = e.target.value; };
   document.querySelectorAll('.doodle-swatches [data-dcolor]').forEach(b => {
     b.onclick = () => { $('doodleColor').value = b.dataset.dcolor; };
@@ -1890,6 +2155,7 @@ function bind() {
   $('paperW').onchange = () => setPaperSize($('paperW').value, $('paperH').value);
   $('paperH').onchange = () => setPaperSize($('paperW').value, $('paperH').value);
 
+  $('exportGrid9Btn').onclick = openGrid9ExportModal;
   $('exportPageBtn').onclick = exportCurrentPage;
   $('addPageBtn').onclick = () => { doc.pages.push(blankPage()); current = doc.pages.length - 1; selectOnly(-1); persist(); renderPagesList(); redraw(); renderProps(); };
   $('dupPageBtn').onclick = () => { const c = clone(activePage()); c.elements.forEach(e => e.id = uid()); doc.pages.splice(current + 1, 0, c); current++; selectOnly(-1); persist(); renderPagesList(); redraw(); renderProps(); };
@@ -1918,9 +2184,9 @@ function bind() {
     try {
       const data = JSON.parse(await f.text());
       if (!Array.isArray(data.pages) || !data.pages.length) throw Error('无效的 Plog 备份文件');
-      doc = { width: data.width || 1080, height: data.height || 1440, pages: data.pages };
-      current = 0; selected = -1;
-      syncPaperSizeUI(); persist(); renderPagesList(); redraw(); renderProps();
+      doc = { width: data.width || 1080, height: data.height || 1440, grid9: !!data.grid9, grid9Gap: Number(data.grid9Gap) || 0, pages: data.pages };
+      current = 0; selectOnly(-1);
+      syncPaperSizeUI(); syncGrid9UI(); persist(); renderPagesList(); redraw(); renderProps();
       status('✓ 已恢复 Plog 工程备份');
     } catch (err) { alert('导入失败：' + err.message); }
   };
@@ -1964,7 +2230,7 @@ async function init() {
   try {
     db = await openDb();
     const saved = await readDb(activeDocKey());
-    if (saved?.pages?.length) doc = { width: saved.width || 1080, height: saved.height || 1440, pages: saved.pages };
+    if (saved?.pages?.length) doc = { width: saved.width || 1080, height: saved.height || 1440, grid9: !!saved.grid9, grid9Gap: Number(saved.grid9Gap) || 0, pages: saved.pages };
     const fonts = await readDb(FONTS_KEY);
     if (Array.isArray(fonts)) for (const f of fonts) if (f) await registerFontFile(f).catch(() => {});
     const savedStickers = await readDb(STICKERS_KEY);
@@ -1975,6 +2241,7 @@ async function init() {
   }
   await loadOriginalStickers();
   syncPaperSizeUI();
+  syncGrid9UI();
   renderPagesList();
   renderProps();
   await redraw();

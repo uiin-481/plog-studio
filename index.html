@@ -20,6 +20,7 @@
    <button type="button" id="addText">＋ 文字</button>
    <button type="button" id="addShape">＋ 色块</button>
    <button type="button" id="doodleToggle" title="自由涂鸦画笔（马克笔 / 荧光笔 / 蜡笔）">✏ 涂鸦</button>
+   <button type="button" id="grid9Toggle" title="开启九宫格拼接辅助线与 1:1 正方形画纸">⊞ 九宫格</button>
    <span class="sep"></span>
    <button type="button" id="undo" title="撤销 Ctrl+Z">↶</button>
    <button type="button" id="redo" title="重做 Ctrl+Y">↷</button>
@@ -34,6 +35,7 @@
     <select id="paperPreset">
      <option value="1080x1440" selected>小红书 3:4 (1080×1440)</option>
      <option value="1080x1920">手机长图 9:16 (1080×1920)</option>
+     <option value="1800x1800">九宫格拼图 1:1 (1800×1800)</option>
      <option value="1200x1200">正方形 1:1 (1200×1200)</option>
      <option value="1440x1080">横版 4:3 (1440×1080)</option>
      <option value="880x1180">摄影书页 (880×1180)</option>
@@ -57,6 +59,7 @@
     <option value="1.5">1.5×</option>
     <option value="2">2×</option>
    </select>
+   <button type="button" id="exportGrid9Btn" title="将画布切成 9 张正方形拼接图并预览下载">⊞ 导出九宫格</button>
    <button type="button" id="exportPageBtn" class="primary-btn">🖼 导出当前页</button>
   </div>
  </header>
@@ -111,6 +114,19 @@
     </div>
     <label>粗细 <span id="doodleSizeVal">14</span><input type="range" id="doodleSize" min="3" max="60" value="14"></label>
     <button type="button" id="doodleDone" class="primary-btn">✓ 完成涂鸦</button>
+   </div>
+   <div id="grid9Bar" class="grid9-bar" hidden>
+    <strong>⊞ 九宫格拼接模式</strong>
+    <label>切图缝隙
+     <select id="grid9GapSel" aria-label="九宫格切图缝隙">
+      <option value="0" selected>无缝直切（0px）</option>
+      <option value="18">朋友圈白缝补偿（18px）</option>
+      <option value="30">宽松白缝补偿（30px）</option>
+     </select>
+    </label>
+    <button type="button" id="grid9SquareBtn">设为 1800×1800 正方形</button>
+    <button type="button" id="grid9ExportBarBtn" class="primary-btn">⊞ 预览并导出 9 张</button>
+    <button type="button" id="grid9CloseBtn">关闭辅助线</button>
    </div>
    <div class="canvas-stage">
     <div class="canvas-wrap"><canvas id="editCanvas" width="1080" height="1440"></canvas></div>
