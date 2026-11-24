@@ -25,8 +25,11 @@
    <span class="sep"></span>
    <button type="button" id="undo" title="撤销 Ctrl+Z">↶</button>
    <button type="button" id="redo" title="重做 Ctrl+Y">↷</button>
-   <button type="button" id="duplicateEl" title="复制 Ctrl+D">⧉ 复制</button>
+   <button type="button" id="duplicateEl" title="原地克隆 Ctrl+D">⊕ 克隆</button>
+   <button type="button" id="copyEl" title="复制所选图层 Ctrl+C">⧉ 复制</button>
+   <button type="button" id="pasteEl" title="粘贴图层到当前画布 Ctrl+V" disabled>📋 粘贴</button>
    <button type="button" id="deleteEl" title="删除 Delete">⌫ 删除</button>
+   <button type="button" id="crossSelectBtn" title="跨多个画布勾选任意图层进行复制、移动或汇总">⇄ 跨画布多选</button>
    <span class="sep"></span>
    <button type="button" id="importFont" title="导入本地字体文件">Aa 字体</button>
   </div>
@@ -81,6 +84,7 @@
      <button type="button" id="dupPageBtn">复制页</button>
      <button type="button" id="delPageBtn">删除页</button>
     </div>
+    <button type="button" id="crossSelectLeftBtn" title="跨多个画布多选图层">⇄ 跨画布多选</button>
    </div>
    <div class="backup-bar">
     <button type="button" id="exportJsonBtn" title="导出工程 JSON 备份">↓ 备份 JSON</button>
@@ -101,7 +105,7 @@
      <button type="button" id="zoomFit" title="恢复适配窗口">适配</button>
     </div>
     <button type="button" id="focusCanvasBtn" class="ghost-btn" title="收起/展开左右侧栏以最大化画布">⤢ 专注画布</button>
-    <span class="hint">Ctrl+滚轮缩放 · 空格拖动平移 · Shift+点击多选 · 双击图片精修</span>
+    <span class="hint">空白处拖框多选 · Ctrl+C/V 跨画布复制粘贴 · 空格拖动平移 · 双击修图</span>
    </div>
    <div id="doodleBar" class="doodle-bar" hidden>
     <strong>✏ 涂鸦画笔</strong>

@@ -81,6 +81,7 @@ let db = null, dbReady = false, pendingSave = 0;
 let doc = { width: 1080, height: 1440, grid9: false, grid9Gap: 0, pages: [blankPage()] };
 let current = 0, selected = -1, selectedIds = new Set(), drag = null;
 let snapGuides = [], canvasZoom = 0, spacePan = false, doodleMode = false, doodlePts = null;
+let marquee = null, clipboard = [], clipboardSourcePage = -1, pasteBump = 0, pastedViaEvent = false;
 let undoStack = [], redoStack = [];
 const imgCache = new Map();
 const effectCache = new Map();
@@ -114,6 +115,83 @@ function toggleSelect(idx) {
 function selectedEntries() {
   const arr = activePage().elements;
   return arr.map((el, i) => ({ el, i })).filter(({ el, i }) => selectedIds.has(el.id) || i === selected);
+}
+function layerLabel(el) {
+  if (!el) return '图层';
+  if (el.role === 'doodle') return '✎ 自由涂鸦';
+  if (el.type === 'text') return 'T ' + String(el.text || '').slice(0, 18);
+  if (el.type === 'image') return '▣ 图片 / 贴纸';
+  return '◇ 装饰色块';
+}
+function syncClipboardUI() {
+  const btn = $('pasteEl');
+  if (!btn) return;
+  btn.disabled = !clipboard.length;
+  btn.textContent = clipboard.length ? `📋 粘贴 (${clipboard.length})` : '📋 粘贴';
+}
+function copySelected() {
+  const items = selectedEntries();
+  if (!items.length) return false;
+  clipboard = items.map(x => clone(x.el));
+  clipboardSourcePage = current;
+  pasteBump = 0;
+  syncClipboardUI();
+  status(`✓ 已复制 ${clipboard.length} 个图层（可切换任意画布按 Ctrl+V 或点“粘贴”）`);
+  return true;
+}
+function cutSelected() {
+  const items = selectedEntries();
+  if (!items.length || !copySelected()) return;
+  const drop = new Set(items.map(x => x.el.id));
+  modify(() => {
+    activePage().elements = activePage().elements.filter(e => !drop.has(e.id));
+    selectOnly(-1);
+  });
+  renderPagesList();
+  status(`✂ 已剪切 ${items.length} 个图层（可切换任意画布粘贴）`);
+}
+async function pasteClipboard() {
+  if (!clipboard.length) return;
+  const samePage = clipboardSourcePage === current;
+  if (samePage) pasteBump++;
+  const dx = samePage ? 28 * pasteBump : 0;
+  const dy = samePage ? 28 * pasteBump : 0;
+  const srcs = clipboard.filter(e => e.type === 'image' && e.src).map(e => getImg(e.src));
+  if (srcs.length) await Promise.all(srcs);
+  modify(() => {
+    const nextIds = new Set();
+    for (const item of clipboard) {
+      const copy = clone(item);
+      copy.id = uid();
+      copy.locked = false;
+      copy.hidden = false;
+      copy.x += dx;
+      copy.y += dy;
+      if (!samePage) {
+        copy.x = clamp(copy.x, 0, Math.max(0, W() - Math.min(copy.w, W())));
+        copy.y = clamp(copy.y, 0, Math.max(0, H() - Math.min(copy.h, H())));
+      }
+      activePage().elements.push(copy);
+      nextIds.add(copy.id);
+    }
+    selectedIds = nextIds;
+    selected = activePage().elements.length - 1;
+  });
+  renderPagesList();
+  status(`✓ 已粘贴 ${clipboard.length} 个图层到第 ${current + 1} 页`);
+}
+function selectAllVisible() {
+  const arr = activePage().elements;
+  const next = new Set();
+  let lastIdx = -1;
+  arr.forEach((el, i) => {
+    if (!el.hidden && !el.locked) { next.add(el.id); lastIdx = i; }
+  });
+  selectedIds = next;
+  selected = lastIdx;
+  redrawSync();
+  renderProps();
+  if (next.size) status(`✓ 已全选当前画布 ${next.size} 个图层`);
 }
 
 function getProjectsIndex() {
@@ -915,6 +993,21 @@ function paintSelection() {
   if (el.type === 'image') { dot(h.width, '#6c467c', 9); dot(h.height, '#6c467c', 9); }
 }
 
+function paintMarquee() {
+  if (!marquee) return;
+  const x = Math.min(marquee.x0, marquee.x1), y = Math.min(marquee.y0, marquee.y1);
+  const w = Math.abs(marquee.x1 - marquee.x0), h = Math.abs(marquee.y1 - marquee.y0);
+  if (w < 2 && h < 2) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(108, 70, 124, 0.14)';
+  ctx.strokeStyle = '#6c467c';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+}
+
 async function redraw() {
   await ensureImages(activePage());
   paintPage(activePage(), canvas, 1);
@@ -925,6 +1018,7 @@ async function redraw() {
 function redrawSync() {
   paintPage(activePage(), canvas, 1);
   paintSelection();
+  paintMarquee();
   if (doodlePts && doodlePts.length) {
     const style = $('doodleType')?.value || 'marker';
     const color = $('doodleColor')?.value || '#3f312b';
@@ -1441,7 +1535,83 @@ function renderProps() {
   bgCard.append(bgHead, bgRow, palBox);
   panel.append(bgCard);
 
-  // 2. Selected Element Properties
+  // 2. Multi-Select Batch Card & Selected Element Properties
+  const multiItems = selectedEntries();
+  if (multiItems.length > 1) {
+    const mCard = document.createElement('div'); mCard.className = 'plog-card multi-card';
+    mCard.innerHTML = `<div class="plog-card-head"><strong>✦ 已选中 ${multiItems.length} 个图层 · 批量操作</strong></div>`;
+    const alignRow = document.createElement('div'); alignRow.className = 'prop-btns';
+    const alignGroup = mode => {
+      const unlocked = multiItems.map(x => x.el).filter(e => !e.locked);
+      if (!unlocked.length) return;
+      const minX = Math.min(...unlocked.map(e => e.x)), maxX = Math.max(...unlocked.map(e => e.x + e.w));
+      const minY = Math.min(...unlocked.map(e => e.y)), maxY = Math.max(...unlocked.map(e => e.y + e.h));
+      const midX = (minX + maxX) / 2, midY = (minY + maxY) / 2;
+      modify(() => {
+        for (const it of unlocked) {
+          if (mode === 'left') it.x = minX;
+          else if (mode === 'cx') it.x = midX - it.w / 2;
+          else if (mode === 'right') it.x = maxX - it.w;
+          else if (mode === 'top') it.y = minY;
+          else if (mode === 'cy') it.y = midY - it.h / 2;
+          else if (mode === 'bottom') it.y = maxY - it.h;
+        }
+      });
+    };
+    [['左对齐', 'left'], ['水平居中', 'cx'], ['右对齐', 'right'], ['顶对齐', 'top'], ['垂直居中', 'cy'], ['底对齐', 'bottom']].forEach(([lbl, m]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = lbl; b.onclick = () => alignGroup(m); alignRow.append(b);
+    });
+
+    const tRow = document.createElement('div'); tRow.className = 'multi-transfer-row';
+    const tSel = document.createElement('select');
+    doc.pages.forEach((_, idx) => {
+      if (idx === current) return;
+      const o = document.createElement('option'); o.value = String(idx); o.textContent = `第 ${idx + 1} 页`; tSel.append(o);
+    });
+    const newOpt = document.createElement('option'); newOpt.value = '__new__'; newOpt.textContent = '＋ 新建画布'; tSel.append(newOpt);
+    const transfer = move => {
+      const val = tSel.value;
+      const ids = new Set(multiItems.map(x => x.el.id));
+      let dstIdx = val === '__new__' ? doc.pages.length : Number(val);
+      if (val === '__new__') doc.pages.push(blankPage());
+      const dst = doc.pages[dstIdx];
+      if (!dst) return;
+      const copies = multiItems.map(x => {
+        const c = clone(x.el);
+        c.id = uid(); c.locked = false;
+        c.x = clamp(c.x, 0, Math.max(0, W() - Math.min(c.w, W())));
+        c.y = clamp(c.y, 0, Math.max(0, H() - Math.min(c.h, H())));
+        return c;
+      });
+      dst.elements.push(...copies);
+      if (move) {
+        snapshot();
+        activePage().elements = activePage().elements.filter(e => !ids.has(e.id));
+        selectOnly(-1);
+        persist();
+      } else {
+        if (db) persist();
+      }
+      current = dstIdx;
+      selectedIds = new Set(copies.map(c => c.id));
+      selected = dst.elements.length - 1;
+      $('pageLabel').textContent = `第 ${current + 1} 页`;
+      renderPagesList(); redraw(); renderProps();
+      status(`${move ? '✂ 已移动' : '⧉ 已复制'} ${copies.length} 个图层到第 ${current + 1} 页`);
+    };
+    const bCopyTo = document.createElement('button'); bCopyTo.type = 'button'; bCopyTo.textContent = '复制到该画布'; bCopyTo.onclick = () => transfer(false);
+    const bMoveTo = document.createElement('button'); bMoveTo.type = 'button'; bMoveTo.textContent = '移动到该画布'; bMoveTo.onclick = () => transfer(true);
+    tRow.append(tSel, bCopyTo, bMoveTo);
+
+    const bActRow = document.createElement('div'); bActRow.className = 'prop-btns';
+    const bCp = document.createElement('button'); bCp.type = 'button'; bCp.textContent = '⧉ 复制 (Ctrl+C)'; bCp.onclick = copySelected;
+    const bCt = document.createElement('button'); bCt.type = 'button'; bCt.textContent = '✂ 剪切 (Ctrl+X)'; bCt.onclick = cutSelected;
+    const bDl = document.createElement('button'); bDl.type = 'button'; bDl.textContent = '⌫ 批量删除'; bDl.onclick = () => $('deleteEl').click();
+    bActRow.append(bCp, bCt, bDl);
+    mCard.append(alignRow, tRow, bActRow);
+    panel.append(mCard);
+  }
+
   const el = activePage().elements[selected];
   if (el) {
     const field = (name, key, val, kind = 'text', onChg = null) => {
@@ -1813,7 +1983,13 @@ canvas.addEventListener('pointerdown', e => {
     return;
   }
   const found = hit(p);
-  if (found.idx < 0) { selectOnly(-1); snapGuides = []; redrawSync(); renderProps(); return; }
+  if (found.idx < 0) {
+    if (!e.shiftKey) selectOnly(-1);
+    snapGuides = [];
+    marquee = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, additive: e.shiftKey };
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    redrawSync(); renderProps(); return;
+  }
   const arr = activePage().elements;
   if (found.mode === 'move' && e.shiftKey) {
     toggleSelect(found.idx);
@@ -1826,7 +2002,7 @@ canvas.addEventListener('pointerdown', e => {
   const group = selectedEntries().filter(x => !x.el.locked).map(x => ({ idx: x.i, origX: x.el.x, origY: x.el.y }));
   snapshot();
   drag = { mode: found.mode, start: p, orig: clone(arr[selected]), group };
-  canvas.setPointerCapture(e.pointerId);
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
   redrawSync(); renderProps();
 });
 canvas.addEventListener('pointermove', e => {
@@ -1837,6 +2013,12 @@ canvas.addEventListener('pointermove', e => {
       doodlePts.push([p.x, p.y]);
       redrawSync();
     }
+    return;
+  }
+  if (marquee) {
+    marquee.x1 = p.x;
+    marquee.y1 = p.y;
+    redrawSync();
     return;
   }
   if (!drag) return;
@@ -1877,6 +2059,31 @@ canvas.addEventListener('pointerup', () => {
   if (doodleMode && doodlePts) {
     const pts = doodlePts; doodlePts = null;
     commitDoodleStroke(pts);
+    return;
+  }
+  if (marquee) {
+    const x0 = Math.min(marquee.x0, marquee.x1), y0 = Math.min(marquee.y0, marquee.y1);
+    const x1 = Math.max(marquee.x0, marquee.x1), y1 = Math.max(marquee.y0, marquee.y1);
+    const additive = marquee.additive;
+    marquee = null;
+    if (x1 - x0 > 6 || y1 - y0 > 6) {
+      const next = additive ? new Set(selectedIds) : new Set();
+      let lastIdx = additive ? selected : -1;
+      activePage().elements.forEach((el, i) => {
+        if (el.hidden || el.locked) return;
+        const pts = [
+          rotatePoint(el, el.x, el.y), rotatePoint(el, el.x + el.w, el.y),
+          rotatePoint(el, el.x, el.y + el.h), rotatePoint(el, el.x + el.w, el.y + el.h)
+        ];
+        const bx0 = Math.min(...pts.map(q => q.x)), bx1 = Math.max(...pts.map(q => q.x));
+        const by0 = Math.min(...pts.map(q => q.y)), by1 = Math.max(...pts.map(q => q.y));
+        if (bx1 >= x0 && bx0 <= x1 && by1 >= y0 && by0 <= y1) { next.add(el.id); lastIdx = i; }
+      });
+      selectedIds = next;
+      selected = lastIdx;
+      if (next.size) status(`✓ 已框选 ${next.size} 个图层（可一起拖动、对齐或复制粘贴到其他画布）`);
+    }
+    redrawSync(); renderProps();
     return;
   }
   if (!drag) return;
@@ -2476,6 +2683,185 @@ async function showDoubleExposureModal() {
   drawPreview();
 }
 
+function showCrossCanvasModal() {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'photo-edit-backdrop';
+  backdrop.innerHTML = `<section class="cross-modal-dialog" role="dialog" aria-modal="true">
+   <header class="photo-edit-header"><div><b>⇄ 跨画布多选 · 跨页汇总与管理</b><small>同时勾选任意多个画布中的照片、文字或贴纸，一键复制、移动或汇总到新画布</small></div><button type="button" data-action="close">✕</button></header>
+   <div class="cross-modal-body" data-body></div>
+   <footer class="photo-edit-footer"><span data-count>已跨画布选中 0 个图层</span><div style="flex-wrap:wrap"><button type="button" data-action="clip">📋 放入剪贴板</button><button type="button" data-action="copy-cur">⧉ 复制到当前页</button><button type="button" data-action="move-cur">✂ 移动到当前页</button><button type="button" data-action="to-new" class="photo-edit-primary">＋ 汇总到新画布</button><button type="button" data-action="del">⌫ 批量删除</button></div></footer>
+  </section>`;
+  document.body.append(backdrop);
+
+  const bodyEl = backdrop.querySelector('[data-body]');
+  const countEl = backdrop.querySelector('[data-count]');
+  const checked = new Map();
+
+  doc.pages.forEach((pg, pgIdx) => {
+    pg.elements.forEach(el => {
+      if (pgIdx === current && selectedIds.has(el.id)) checked.set(el.id, { pgIdx, el });
+    });
+  });
+
+  const refreshCount = () => {
+    countEl.textContent = `已跨画布选中 ${checked.size} 个图层`;
+  };
+
+  doc.pages.forEach((pg, pgIdx) => {
+    const card = document.createElement('div');
+    card.className = 'cross-page-group';
+    const head = document.createElement('div');
+    head.className = 'cross-page-head';
+    head.innerHTML = `<span>第 ${pgIdx + 1} 页${pgIdx === current ? '（当前画布）' : ''} · ${pg.elements.length} 个图层</span>`;
+    const allLb = document.createElement('label');
+    const allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.checked = pg.elements.length > 0 && pg.elements.every(e => checked.has(e.id));
+    allLb.append(allCb, document.createTextNode('全选本页'));
+    head.append(allLb);
+    card.append(head);
+
+    const grid = document.createElement('div');
+    grid.className = 'cross-layer-grid';
+    if (!pg.elements.length) {
+      grid.innerHTML = '<small style="color:var(--ink-2)">（本画布暂无图层）</small>';
+    } else {
+      const itemCbs = [];
+      pg.elements.forEach(el => {
+        const lb = document.createElement('label');
+        lb.className = 'cross-layer-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = checked.has(el.id);
+        cb.onchange = () => {
+          if (cb.checked) checked.set(el.id, { pgIdx, el });
+          else checked.delete(el.id);
+          allCb.checked = pg.elements.every(e => checked.has(e.id));
+          refreshCount();
+        };
+        itemCbs.push(cb);
+        lb.append(cb, document.createTextNode(layerLabel(el)));
+        grid.append(lb);
+      });
+      allCb.onchange = () => {
+        pg.elements.forEach((el, k) => {
+          itemCbs[k].checked = allCb.checked;
+          if (allCb.checked) checked.set(el.id, { pgIdx, el });
+          else checked.delete(el.id);
+        });
+        refreshCount();
+      };
+    }
+    card.append(grid);
+    bodyEl.append(card);
+  });
+  refreshCount();
+
+  const close = () => backdrop.remove();
+  backdrop.querySelector('[data-action="close"]').onclick = close;
+  backdrop.onclick = e => { if (e.target === backdrop) close(); };
+
+  const pickedList = () => Array.from(checked.values());
+
+  backdrop.querySelector('[data-action="clip"]').onclick = () => {
+    const items = pickedList();
+    if (!items.length) return alert('请先勾选至少一个图层');
+    clipboard = items.map(x => clone(x.el));
+    clipboardSourcePage = -1;
+    pasteBump = 0;
+    syncClipboardUI();
+    close();
+    status(`📋 已跨画布复制 ${clipboard.length} 个图层到剪贴板，切到目标画布按 Ctrl+V 或点“粘贴”即可`);
+  };
+
+  backdrop.querySelector('[data-action="copy-cur"]').onclick = async () => {
+    const items = pickedList();
+    if (!items.length) return alert('请先勾选至少一个图层');
+    const srcs = items.filter(x => x.el.type === 'image' && x.el.src).map(x => getImg(x.el.src));
+    if (srcs.length) await Promise.all(srcs);
+    modify(() => {
+      const nextIds = new Set();
+      for (const { el } of items) {
+        const copy = clone(el);
+        copy.id = uid(); copy.locked = false; copy.hidden = false;
+        copy.x = clamp(copy.x, 0, Math.max(0, W() - Math.min(copy.w, W())));
+        copy.y = clamp(copy.y, 0, Math.max(0, H() - Math.min(copy.h, H())));
+        activePage().elements.push(copy);
+        nextIds.add(copy.id);
+      }
+      selectedIds = nextIds;
+      selected = activePage().elements.length - 1;
+    });
+    renderPagesList();
+    close();
+    status(`✓ 已跨画布复制 ${items.length} 个图层到当前画布`);
+  };
+
+  backdrop.querySelector('[data-action="move-cur"]').onclick = async () => {
+    const items = pickedList();
+    if (!items.length) return alert('请先勾选至少一个图层');
+    const srcs = items.filter(x => x.el.type === 'image' && x.el.src).map(x => getImg(x.el.src));
+    if (srcs.length) await Promise.all(srcs);
+    const moveIds = new Set();
+    const moved = [];
+    for (const { pgIdx, el } of items) {
+      if (pgIdx === current) continue;
+      moveIds.add(el.id);
+      const copy = clone(el);
+      copy.locked = false; copy.hidden = false;
+      copy.x = clamp(copy.x, 0, Math.max(0, W() - Math.min(copy.w, W())));
+      copy.y = clamp(copy.y, 0, Math.max(0, H() - Math.min(copy.h, H())));
+      moved.push(copy);
+    }
+    if (!moved.length) { close(); status('所选图层已全部在当前画布中'); return; }
+    snapshot();
+    doc.pages.forEach((pg, idx) => {
+      if (idx !== current) pg.elements = pg.elements.filter(e => !moveIds.has(e.id));
+    });
+    activePage().elements.push(...moved);
+    selectedIds = new Set(moved.map(e => e.id));
+    selected = activePage().elements.length - 1;
+    persist(); renderPagesList(); redraw(); renderProps();
+    close();
+    status(`✂ 已跨画布移动 ${moved.length} 个图层到当前画布`);
+  };
+
+  backdrop.querySelector('[data-action="to-new"]').onclick = async () => {
+    const items = pickedList();
+    if (!items.length) return alert('请先勾选至少一个图层');
+    const np = blankPage();
+    const clones = items.map(({ el }) => {
+      const copy = clone(el);
+      copy.id = uid(); copy.locked = false; copy.hidden = false;
+      copy.x = clamp(copy.x, 0, Math.max(0, W() - Math.min(copy.w, W())));
+      copy.y = clamp(copy.y, 0, Math.max(0, H() - Math.min(copy.h, H())));
+      return copy;
+    });
+    np.elements.push(...clones);
+    doc.pages.push(np);
+    current = doc.pages.length - 1;
+    selectedIds = new Set(clones.map(c => c.id));
+    selected = np.elements.length - 1;
+    undoStack = []; redoStack = [];
+    $('pageLabel').textContent = `第 ${current + 1} 页`;
+    persist(); renderPagesList(); await redraw(); renderProps();
+    close();
+    status(`✦ 已将跨画布选中的 ${clones.length} 个图层汇总到新画布（第 ${current + 1} 页）`);
+  };
+
+  backdrop.querySelector('[data-action="del"]').onclick = () => {
+    const items = pickedList();
+    if (!items.length) return alert('请先勾选至少一个图层');
+    const dropIds = new Set(items.map(x => x.el.id));
+    snapshot();
+    doc.pages.forEach(pg => { pg.elements = pg.elements.filter(e => !dropIds.has(e.id)); });
+    selectOnly(-1);
+    persist(); renderPagesList(); redraw(); renderProps();
+    close();
+    status(`⌫ 已跨画布批量删除 ${items.length} 个图层`);
+  };
+}
+
 // --- Custom Font Loader ---
 async function registerFontFile(file) {
   const buf = await file.arrayBuffer();
@@ -2570,6 +2956,11 @@ function bind() {
 
   $('undo').onclick = undo;
   $('redo').onclick = redo;
+  $('copyEl').onclick = copySelected;
+  $('pasteEl').onclick = pasteClipboard;
+  $('crossSelectBtn').onclick = showCrossCanvasModal;
+  if ($('crossSelectLeftBtn')) $('crossSelectLeftBtn').onclick = showCrossCanvasModal;
+  syncClipboardUI();
   $('duplicateEl').onclick = () => {
     const items = selectedEntries();
     if (!items.length) return;
@@ -2672,8 +3063,39 @@ function bind() {
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') { e.preventDefault(); selectAllVisible(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelected(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') { e.preventDefault(); cutSelected(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      pastedViaEvent = false;
+      setTimeout(() => { if (!pastedViaEvent && clipboard.length) pasteClipboard(); pastedViaEvent = false; }, 10);
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') { e.preventDefault(); $('duplicateEl').click(); }
     if (e.key === 'Delete' || e.key === 'Backspace') { if (selectedEntries().length) { e.preventDefault(); $('deleteEl').click(); } }
+  });
+  window.addEventListener('paste', async e => {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.querySelector('.photo-edit-backdrop')) return;
+    pastedViaEvent = true;
+    const items = Array.from(e.clipboardData?.items || []);
+    const imgItem = items.find(it => it.type && it.type.startsWith('image/'));
+    if (imgItem) {
+      const f = imgItem.getAsFile();
+      if (f) {
+        e.preventDefault();
+        const src = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
+        const img = await getImg(src);
+        if (img) {
+          const w = Math.min(Math.round(W() * 0.55), img.width), h = Math.round(w * img.height / img.width);
+          addElement({ id: uid(), type: 'image', src, x: Math.round((W() - w) / 2), y: Math.round((H() - h) / 2), w, h: Math.min(Math.round(H() * 0.7), h), fit: 'contain', crop: { x: 0, y: 0, w: 1, h: 1 }, zoom: 1, offsetX: 0, offsetY: 0, rotation: 0, opacity: 1 });
+          status('✓ 已粘贴系统剪贴板图片到当前画布');
+        }
+        return;
+      }
+    }
+    if (clipboard.length) {
+      e.preventDefault();
+      pasteClipboard();
+    }
   });
   window.addEventListener('keyup', e => {
     if (e.code === 'Space') {
