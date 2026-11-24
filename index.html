@@ -19,6 +19,7 @@
    <button type="button" id="addPhoto" class="accent-btn">＋ 图片</button>
    <button type="button" id="addText">＋ 文字</button>
    <button type="button" id="addShape">＋ 色块</button>
+   <button type="button" id="doodleToggle" title="自由涂鸦画笔（马克笔 / 荧光笔 / 蜡笔）">✏ 涂鸦</button>
    <span class="sep"></span>
    <button type="button" id="undo" title="撤销 Ctrl+Z">↶</button>
    <button type="button" id="redo" title="重做 Ctrl+Y">↷</button>
@@ -84,7 +85,32 @@
    <div class="canvas-meta">
     <span id="pageLabel">第 1 页</span>
     <span id="canvasDimLabel">画纸 · 1080 × 1440</span>
-    <span class="hint">支持图片描边、手撕纸边、滤镜、抠图；双击图片可快速编辑</span>
+    <div class="canvas-zoom" role="group" aria-label="画布缩放">
+     <button type="button" id="zoomOut" title="缩小">－</button>
+     <span id="zoomLabel">适配</span>
+     <button type="button" id="zoomIn" title="放大">＋</button>
+     <button type="button" id="zoomFit" title="恢复适配窗口">适配</button>
+    </div>
+    <span class="hint">Shift+点击多选 · 拖动自动对齐 · 双击图片精修</span>
+   </div>
+   <div id="doodleBar" class="doodle-bar" hidden>
+    <strong>✏ 涂鸦画笔</strong>
+    <select id="doodleType" aria-label="画笔类型">
+     <option value="marker">马克笔</option>
+     <option value="highlighter">荧光笔（半透明）</option>
+     <option value="crayon">蜡笔（颗粒质感）</option>
+    </select>
+    <input type="color" id="doodleColor" value="#e26d5a" title="画笔颜色">
+    <div class="doodle-swatches">
+     <button type="button" data-dcolor="#2e242c" style="background:#2e242c" title="炭黑"></button>
+     <button type="button" data-dcolor="#ffffff" style="background:#ffffff" title="纯白"></button>
+     <button type="button" data-dcolor="#ffe066" style="background:#ffe066" title="荧光黄"></button>
+     <button type="button" data-dcolor="#f497a9" style="background:#f497a9" title="樱花粉"></button>
+     <button type="button" data-dcolor="#7c986e" style="background:#7c986e" title="抹茶绿"></button>
+     <button type="button" data-dcolor="#e26d5a" style="background:#e26d5a" title="砖红"></button>
+    </div>
+    <label>粗细 <span id="doodleSizeVal">14</span><input type="range" id="doodleSize" min="3" max="60" value="14"></label>
+    <button type="button" id="doodleDone" class="primary-btn">✓ 完成涂鸦</button>
    </div>
    <div class="canvas-stage">
     <div class="canvas-wrap"><canvas id="editCanvas" width="1080" height="1440"></canvas></div>
@@ -96,7 +122,7 @@
    <div class="right-tabs">
     <button type="button" class="right-tab active" data-tab="props">底色与属性</button>
     <button type="button" class="right-tab" data-tab="stickers">手帐素材</button>
-    <button type="button" class="right-tab" data-tab="plog">文字模板</button>
+    <button type="button" class="right-tab" data-tab="plog">模板与布局</button>
    </div>
    <section id="propsTab" class="right-scroll">
     <div id="elementProps" class="props-box"></div>

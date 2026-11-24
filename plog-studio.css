@@ -17,6 +17,7 @@ button{cursor:pointer}
 .plog-tools,.plog-size-bar,.plog-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .plog-tools button,.plog-actions select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:12px}
 .plog-tools button:hover,.ghost-btn:hover{background:#f3ecf7}
+.plog-tools button.active{background:var(--accent);color:var(--accent-gold);border-color:#b59767}
 .accent-btn{background:#f5eff9!important;border-color:#c8b2d3!important;color:#4a2b57!important;font-weight:700}
 .primary-btn{padding:8px 14px;border:1px solid #b59767;border-radius:9px;background:var(--accent);color:var(--accent-gold);font-weight:700;font-size:12px}
 .primary-btn:hover{filter:brightness(1.1)}
@@ -51,6 +52,8 @@ button{cursor:pointer}
 .canvas-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto}
 .canvas-wrap{display:flex;align-items:center;justify-content:center;max-width:100%;max-height:100%}
 #editCanvas{display:block;max-width:100%;max-height:calc(100dvh - 175px);width:auto;height:auto;background:#fff;box-shadow:0 14px 44px #1f112b26;border-radius:4px;touch-action:none;cursor:default}
+#editCanvas.zoomed{max-width:none;max-height:none}
+#editCanvas.doodle-cursor{cursor:crosshair}
 .status-bar{padding:6px 14px;background:var(--surface);border-top:1px solid var(--line);font-size:11px;color:var(--ink-2);display:flex;justify-content:space-between}
 
 .right-tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line);background:var(--surface-2)}
@@ -88,6 +91,29 @@ button{cursor:pointer}
 .layers-list{display:grid;gap:5px}
 .layer-row{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);text-align:left;font-size:12px}
 .layer-row.active{border-color:var(--purple);background:#f1e8f7;font-weight:700}
+.layer-item{display:flex;align-items:center;gap:4px}
+.layer-item .layer-row{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.layer-item .layer-icon-btn{width:28px;height:30px;padding:0;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:12px;flex:none}
+.layer-item .layer-icon-btn.on{background:#efe5f5;border-color:var(--purple)}
+
+.canvas-zoom{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.canvas-zoom button{border:0;background:transparent;padding:2px 6px;border-radius:5px;font-size:12px}
+.canvas-zoom button:hover{background:#f3ecf7}
+.canvas-zoom span{min-width:38px;text-align:center;font-size:11px;font-weight:700;color:var(--ink)}
+
+.doodle-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 14px;background:#fffaf2;border-bottom:1px solid #e6d7c3;font-size:12px}
+.doodle-bar[hidden]{display:none!important}
+.doodle-bar select,.doodle-bar input[type="color"]{padding:4px 6px;border:1px solid #dac8b0;border-radius:6px;background:#fff}
+.doodle-bar input[type="color"]{width:32px;height:28px;padding:1px}
+.doodle-bar label{display:flex;align-items:center;gap:6px;font-weight:600}
+.doodle-swatches{display:flex;gap:5px}
+.doodle-swatches button{width:20px;height:20px;padding:0;border-radius:50%;border:1.5px solid #0003}
+
+.prop-check{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.prop-check input{width:auto;margin:0}
+.frame-quick-row{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.frame-quick-row button{padding:6px 4px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:11px}
+.frame-quick-row button.active{background:var(--accent);color:var(--accent-gold);border-color:#b59767}
 
 .plog-section{padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2);display:grid;gap:8px;margin-bottom:10px}
 .plog-section h4{margin:0;font-size:13px}

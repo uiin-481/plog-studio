@@ -51,22 +51,23 @@ const PLOG_TEXT_PRESETS = [
   { name: '📹 CCD 时间戳', desc: '复古 DV 角标', make: () => [T('REC ●   2026/11/24   00:24', 70, 65, 560, 44, 24, '#e35b4f', mono)] }
 ];
 
-const PLOG_PATTERNS = [
-  { name: '胶带 · 格纹', desc: '半透斜贴纸胶带', w: 260, h: 76, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 76"><rect x="4" y="6" width="252" height="64" rx="4" fill="#d9c6a5" fill-opacity="0.72" stroke="#bba27c" stroke-width="2" stroke-dasharray="6 4"/><path d="M20 6v64M50 6v64M80 6v64M110 6v64M140 6v64M170 6v64M200 6v64M230 6v64M4 26h252M4 50h252" stroke="#ffffff" stroke-opacity="0.45" stroke-width="2"/></svg>' },
-  { name: '胶带 · 樱花粉', desc: '手撕边缘胶带', w: 250, h: 68, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 68"><path d="M10 8 L242 6 L236 22 L245 38 L238 60 L8 62 L14 42 L6 24 Z" fill="#f3c6cf" fill-opacity="0.82"/></svg>' },
-  { name: '拍立得相框', desc: '经典白框（放底层）', w: 440, h: 520, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 520"><rect x="6" y="6" width="428" height="508" rx="6" fill="#fffdf8" stroke="#dfd4c6" stroke-width="4"/><rect x="30" y="30" width="380" height="380" fill="#efe8dd" stroke="#e4d9cb" stroke-width="2"/></svg>' },
-  { name: '邮票齿孔框', desc: '复古邮票边框', w: 360, h: 440, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 440"><rect x="14" y="14" width="332" height="412" fill="none" stroke="#c5a882" stroke-width="8" stroke-dasharray="10 10"/><rect x="30" y="30" width="300" height="380" fill="none" stroke="#c5a882" stroke-width="2"/></svg>' },
-  { name: '星芒闪烁 ✦', desc: '手绘星星组合', w: 180, h: 180, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><path d="M90 14 Q96 80 166 90 Q96 100 90 166 Q84 100 14 90 Q84 80 90 14Z" fill="#e9c46a"/><path d="M142 22 Q145 42 164 44 Q145 46 142 66 Q139 46 120 44 Q139 42 142 22Z" fill="#f4a261"/></svg>' },
-  { name: '手绘波浪线', desc: '涂鸦分隔线', w: 340, h: 70, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 70"><path d="M12 38 Q40 12 68 38 T124 38 T180 38 T236 38 T292 38 T328 38" fill="none" stroke="#7c9070" stroke-width="7" stroke-linecap="round"/></svg>' },
-  { name: '手绘小箭头', desc: '标注重点指针', w: 180, h: 120, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 120"><path d="M16 92 Q78 86 148 34 M124 24 L154 30 L142 60" fill="none" stroke="#b24a4a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
-  { name: '像素爱心', desc: 'Y2K 复古贴纸', w: 140, h: 130, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 130"><path d="M30 20 H55 V35 H85 V20 H110 V35 H125 V65 H110 V80 H95 V95 H80 V110 H60 V95 H45 V80 H30 V65 H15 V35 H30 Z" fill="#e76f7a" stroke="#2d1e22" stroke-width="5"/></svg>' }
+const PLOG_ATMOSPHERES = [
+  ['none', '无光影叠加'], ['leak-warm', '暖橙胶片漏光'], ['leak-pink', '粉紫梦幻光晕'], ['paper-fold', '纸张折痕做旧'], ['film-grain', '全页胶片颗粒']
+];
+const PLOG_LAYOUTS = [
+  { name: '上下双图', desc: '上下均衡双拼', slots: (w, h) => [[0.08, 0.06, 0.84, 0.42], [0.08, 0.52, 0.84, 0.42]] },
+  { name: '左右双图', desc: '双栏对称留白', slots: () => [[0.06, 0.14, 0.42, 0.72], [0.52, 0.14, 0.42, 0.72]] },
+  { name: '三图杂志格', desc: '左大图+右双小图', slots: () => [[0.06, 0.08, 0.50, 0.84], [0.59, 0.08, 0.35, 0.40], [0.59, 0.52, 0.35, 0.40]] },
+  { name: '四图田字格', desc: '2×2 整齐四宫格', slots: () => [[0.07, 0.08, 0.41, 0.40], [0.52, 0.08, 0.41, 0.40], [0.07, 0.52, 0.41, 0.40], [0.52, 0.52, 0.41, 0.40]] },
+  { name: '拍立得散落墙', desc: '倾斜拍立得拼贴', polaroid: true, slots: () => [[0.08, 0.08, 0.44, 0.46, -5], [0.46, 0.13, 0.45, 0.46, 4], [0.22, 0.48, 0.50, 0.46, -2]] }
 ];
 
-const blankPage = () => ({ bg: '#f6f4f0', bgPattern: 'none', elements: [] });
+const blankPage = () => ({ bg: '#f6f4f0', bgPattern: 'none', atmosphere: 'none', elements: [] });
 
 let db = null, dbReady = false, pendingSave = 0;
 let doc = { width: 1080, height: 1440, pages: [blankPage()] };
-let current = 0, selected = -1, drag = null;
+let current = 0, selected = -1, selectedIds = new Set(), drag = null;
+let snapGuides = [], canvasZoom = 0, doodleMode = false, doodlePts = null;
 let undoStack = [], redoStack = [];
 const imgCache = new Map();
 const effectCache = new Map();
@@ -80,6 +81,27 @@ let stickerQuery = '';
 const canvas = $('editCanvas');
 const ctx = canvas.getContext('2d');
 const status = txt => { $('statusText').textContent = txt; };
+
+function selectOnly(idx) {
+  selected = idx;
+  const el = idx >= 0 ? activePage().elements[idx] : null;
+  selectedIds = el ? new Set([el.id]) : new Set();
+}
+function toggleSelect(idx) {
+  const arr = activePage().elements, el = arr[idx];
+  if (!el) return;
+  if (selectedIds.has(el.id)) {
+    selectedIds.delete(el.id);
+    if (selected === idx) selected = arr.findIndex(e => selectedIds.has(e.id));
+  } else {
+    selectedIds.add(el.id);
+    selected = idx;
+  }
+}
+function selectedEntries() {
+  const arr = activePage().elements;
+  return arr.map((el, i) => ({ el, i })).filter(({ el, i }) => selectedIds.has(el.id) || i === selected);
+}
 
 function getProjectsIndex() {
   try {
@@ -162,6 +184,80 @@ function syncPaperSizeUI() {
   const sel = $('paperPreset');
   const hasOption = Array.from(sel.options).some(o => o.value === presetVal);
   sel.value = hasOption ? presetVal : 'custom';
+  applyCanvasZoom();
+}
+
+function applyCanvasZoom() {
+  if (!canvasZoom) {
+    canvas.classList.remove('zoomed');
+    canvas.style.width = '';
+    canvas.style.height = '';
+    if ($('zoomLabel')) $('zoomLabel').textContent = '适配';
+  } else {
+    canvas.classList.add('zoomed');
+    canvas.style.width = Math.round(W() * canvasZoom) + 'px';
+    canvas.style.height = Math.round(H() * canvasZoom) + 'px';
+    if ($('zoomLabel')) $('zoomLabel').textContent = Math.round(canvasZoom * 100) + '%';
+  }
+}
+
+function setDoodleMode(on) {
+  doodleMode = !!on;
+  $('doodleToggle')?.classList.toggle('active', doodleMode);
+  if ($('doodleBar')) $('doodleBar').hidden = !doodleMode;
+  canvas.classList.toggle('doodle-cursor', doodleMode);
+  if (!doodleMode && doodlePts) { doodlePts = null; redrawSync(); }
+  if (doodleMode) status('✏ 画笔已开启：在画布上拖动绘制（完成后点右上角“完成涂鸦”）');
+}
+
+function drawDoodleStroke(c, pts, style, color, size, ox = 0, oy = 0) {
+  if (!pts || pts.length < 1) return;
+  c.save();
+  c.translate(-ox, -oy);
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  if (style === 'highlighter') {
+    c.globalAlpha = 0.42;
+    c.strokeStyle = color;
+    c.lineWidth = size * 1.45;
+    c.beginPath();
+    c.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+    if (pts.length === 1) c.lineTo(pts[0][0] + 0.1, pts[0][1]);
+    c.stroke();
+  } else if (style === 'crayon') {
+    c.fillStyle = color;
+    let seed = 48271;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const r = Math.max(2, size * 0.5);
+    for (let i = 0; i < pts.length; i++) {
+      const [ax, ay] = pts[i];
+      const [bx, by] = pts[Math.min(i + 1, pts.length - 1)];
+      const dist = Math.max(1, Math.hypot(bx - ax, by - ay));
+      const steps = Math.max(1, Math.ceil(dist / 3));
+      for (let s = 0; s < steps; s++) {
+        const px = ax + (bx - ax) * (s / steps), py = ay + (by - ay) * (s / steps);
+        for (let k = 0; k < 5; k++) {
+          const ang = rnd() * Math.PI * 2, rad = Math.sqrt(rnd()) * r;
+          c.globalAlpha = 0.35 + rnd() * 0.45;
+          c.fillRect(px + Math.cos(ang) * rad - 1.5, py + Math.sin(ang) * rad - 1.5, 3, 3);
+        }
+      }
+    }
+  } else {
+    c.strokeStyle = color;
+    c.lineWidth = size;
+    c.beginPath();
+    c.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+      c.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+    }
+    const last = pts[pts.length - 1];
+    c.lineTo(last[0] + (pts.length === 1 ? 0.1 : 0), last[1]);
+    c.stroke();
+  }
+  c.restore();
 }
 
 function setPaperSize(w, h) {
@@ -208,7 +304,8 @@ function imageStroke(el) {
 function imageFrame(el) {
   const v = el.frame || {}, num = (n, d, min, max) => Number.isFinite(Number(n)) ? clamp(Number(n), min, max) : d;
   const shape = ['none', 'rounded', 'circle', 'torn'].includes(v.shape) ? v.shape : 'none';
-  return { shape, radius: num(v.radius, 36, 0, 200), flipX: v.flipX === true, flipY: v.flipY === true };
+  const frameStyle = ['none', 'polaroid', 'film35', 'stamp'].includes(v.frameStyle) ? v.frameStyle : 'none';
+  return { shape, radius: num(v.radius, 36, 0, 200), flipX: v.flipX === true, flipY: v.flipY === true, frameStyle, caption: typeof v.caption === 'string' ? v.caption : '' };
 }
 function imageAdjustments(el) {
   const a = el.adjustments || {}, safe = (val, d, min, max) => { const n = Number(val); return Number.isFinite(n) ? clamp(n, min, max) : d; };
@@ -294,18 +391,61 @@ function cachePhotoEffect(el, item) {
 }
 function paintImageElement(c, el, img, x, y, scale = 1) {
   const sh = imageShadow(el), st = imageStroke(el), fr = imageFrame(el), adjust = imageAdjustments(el);
-  const needsBuffer = (sh.enabled && sh.opacity > 0) || (st.enabled && st.width > 0) || adjust.warmth !== 0 || adjust.fade > 0 || adjust.vignette > 0;
+  const needsBuffer = (sh.enabled && sh.opacity > 0) || (st.enabled && st.width > 0) || fr.frameStyle !== 'none' || adjust.warmth !== 0 || adjust.fade > 0 || adjust.vignette > 0;
   if (!needsBuffer) { c.save(); c.filter = photoFilter(el); drawPlacedImage(c, el, img, x, y); c.restore(); return; }
   const r = cropOf(el), maxSize = 4096, pad = st.enabled && st.width > 0 ? Math.ceil(st.width) : 0;
   const ds = Math.min(Math.max(.25, scale), maxSize / Math.max(1, el.w + pad * 2), maxSize / Math.max(1, el.h + pad * 2));
-  const key = [el.w, el.h, el.fit, r.x, r.y, r.w, r.h, el.zoom, el.offsetX, el.offsetY, adjust.brightness, adjust.contrast, adjust.saturation, adjust.warmth, adjust.sepia, adjust.fade, adjust.grayscale, adjust.vignette, adjust.blur, st.enabled ? 1 : 0, st.width, st.color, fr.shape, fr.radius, fr.flipX ? 1 : 0, fr.flipY ? 1 : 0, ds].join('|');
+  const key = [el.w, el.h, el.fit, r.x, r.y, r.w, r.h, el.zoom, el.offsetX, el.offsetY, adjust.brightness, adjust.contrast, adjust.saturation, adjust.warmth, adjust.sepia, adjust.fade, adjust.grayscale, adjust.vignette, adjust.blur, st.enabled ? 1 : 0, st.width, st.color, fr.shape, fr.radius, fr.flipX ? 1 : 0, fr.flipY ? 1 : 0, fr.frameStyle, fr.caption, ds].join('|');
   let item = effectCache.get(el);
   if (item) { effectCache.delete(el); effectCache.set(el, item); }
   if (!item || item.key !== key || item.img !== img) {
     const pw = Math.max(1, Math.round(el.w * ds)), ph = Math.max(1, Math.round(el.h * ds));
     const photoCanvas = document.createElement('canvas'); photoCanvas.width = pw; photoCanvas.height = ph;
     const pg = photoCanvas.getContext('2d'); pg.setTransform(pw / el.w, 0, 0, ph / el.h, 0, 0);
-    pg.filter = photoFilter(el); drawPlacedImage(pg, el, img, 0, 0); pg.filter = 'none';
+    if (fr.frameStyle === 'polaroid') {
+      const m = Math.max(10, el.w * 0.06), bot = Math.max(36, el.h * 0.19), ih = Math.max(20, el.h - m - bot), iw = Math.max(20, el.w - m * 2);
+      pg.fillStyle = '#fffdf8'; pg.beginPath(); pg.roundRect(0, 0, el.w, el.h, 8); pg.fill();
+      pg.strokeStyle = '#dfd4c6'; pg.lineWidth = 3; pg.stroke();
+      const subEl = { ...el, w: iw, h: ih, frame: { ...fr, frameStyle: 'none', shape: 'none' } };
+      pg.save(); pg.translate(m, m); pg.filter = photoFilter(el); drawPlacedImage(pg, subEl, img, 0, 0); pg.restore();
+      if (fr.caption) {
+        pg.fillStyle = '#4e4038';
+        pg.font = `${clamp(Math.round(bot * 0.34), 13, 30)}px ${hand}`;
+        pg.textAlign = 'center'; pg.textBaseline = 'middle';
+        pg.fillText(fr.caption, el.w / 2, m + ih + bot / 2, iw);
+      }
+    } else if (fr.frameStyle === 'film35') {
+      const py = Math.max(28, el.h * 0.13), px = Math.max(10, el.w * 0.04), iw = Math.max(20, el.w - px * 2), ih = Math.max(20, el.h - py * 2);
+      pg.fillStyle = '#1b181e'; pg.beginPath(); pg.roundRect(0, 0, el.w, el.h, 6); pg.fill();
+      pg.fillStyle = '#f4efe6';
+      for (let sx = 18; sx < el.w - 18; sx += 28) {
+        pg.beginPath(); pg.roundRect(sx, py * 0.25, 14, Math.max(8, py * 0.45), 3); pg.fill();
+        pg.beginPath(); pg.roundRect(sx, el.h - py * 0.70, 14, Math.max(8, py * 0.45), 3); pg.fill();
+      }
+      const subEl = { ...el, w: iw, h: ih, frame: { ...fr, frameStyle: 'none', shape: 'none' } };
+      pg.save(); pg.translate(px, py); pg.filter = photoFilter(el); drawPlacedImage(pg, subEl, img, 0, 0); pg.restore();
+      pg.fillStyle = '#e6b25c'; pg.font = `bold ${clamp(Math.round(py * 0.3), 10, 18)}px ${mono}`;
+      pg.textAlign = 'right'; pg.textBaseline = 'middle';
+      pg.fillText('35MM · 24A', el.w - px - 6, el.h - py * 0.15);
+    } else if (fr.frameStyle === 'stamp') {
+      const m = Math.max(14, Math.min(el.w, el.h) * 0.075), iw = Math.max(20, el.w - m * 2), ih = Math.max(20, el.h - m * 2);
+      pg.fillStyle = '#fffdf8'; pg.fillRect(0, 0, el.w, el.h);
+      const subEl = { ...el, w: iw, h: ih, frame: { ...fr, frameStyle: 'none', shape: 'none' } };
+      pg.save(); pg.translate(m, m); pg.filter = photoFilter(el); drawPlacedImage(pg, subEl, img, 0, 0); pg.restore();
+      pg.save(); pg.globalCompositeOperation = 'destination-out';
+      const step = 22, nr = 7;
+      for (let sx = step / 2; sx < el.w; sx += step) {
+        pg.beginPath(); pg.arc(sx, 0, nr, 0, Math.PI * 2); pg.fill();
+        pg.beginPath(); pg.arc(sx, el.h, nr, 0, Math.PI * 2); pg.fill();
+      }
+      for (let sy = step / 2; sy < el.h; sy += step) {
+        pg.beginPath(); pg.arc(0, sy, nr, 0, Math.PI * 2); pg.fill();
+        pg.beginPath(); pg.arc(el.w, sy, nr, 0, Math.PI * 2); pg.fill();
+      }
+      pg.restore();
+    } else {
+      pg.filter = photoFilter(el); drawPlacedImage(pg, el, img, 0, 0); pg.filter = 'none';
+    }
     if (adjust.warmth !== 0) {
       pg.save(); pg.globalCompositeOperation = 'source-atop';
       pg.fillStyle = adjust.warmth > 0 ? `rgba(255,162,72,${(adjust.warmth / 260).toFixed(3)})` : `rgba(88,165,255,${(-adjust.warmth / 260).toFixed(3)})`;
@@ -348,19 +488,87 @@ function paintImageElement(c, el, img, x, y, scale = 1) {
 }
 
 // --- Canvas Rendering ---
-function linesOf(c, text, maxWidth) {
+function linesOf(c, text, maxWidth, spacing = 0) {
   const result = [];
+  const widthOf = str => {
+    if (!spacing) return c.measureText(str).width;
+    const chs = Array.from(str);
+    return chs.reduce((sum, ch) => sum + c.measureText(ch).width, 0) + Math.max(0, chs.length - 1) * spacing;
+  };
   for (const para of String(text || '').split('\n')) {
     if (!para) { result.push(''); continue; }
     let line = '';
     for (const ch of para) {
       const test = line + ch;
-      if (c.measureText(test).width > maxWidth && line) { result.push(line); line = ch; }
+      if (widthOf(test) > maxWidth && line) { result.push(line); line = ch; }
       else line = test;
     }
     result.push(line);
   }
   return result;
+}
+
+function drawAtmosphere(c, atmo, w, h) {
+  if (!atmo || atmo === 'none') return;
+  c.save();
+  if (atmo === 'leak-warm') {
+    c.globalCompositeOperation = 'screen';
+    const g1 = c.createRadialGradient(w * 0.08, h * 0.14, 10, w * 0.18, h * 0.25, Math.max(w, h) * 0.72);
+    g1.addColorStop(0, 'rgba(255, 166, 92, 0.46)');
+    g1.addColorStop(0.45, 'rgba(255, 98, 52, 0.22)');
+    g1.addColorStop(1, 'rgba(255, 80, 30, 0)');
+    c.fillStyle = g1;
+    c.fillRect(0, 0, w, h);
+    const g2 = c.createRadialGradient(w * 0.96, h * 0.88, 10, w * 0.85, h * 0.82, Math.max(w, h) * 0.48);
+    g2.addColorStop(0, 'rgba(255, 198, 118, 0.32)');
+    g2.addColorStop(1, 'rgba(255, 130, 60, 0)');
+    c.fillStyle = g2;
+    c.fillRect(0, 0, w, h);
+  } else if (atmo === 'leak-pink') {
+    c.globalCompositeOperation = 'screen';
+    const g1 = c.createRadialGradient(w * 0.88, h * 0.16, 12, w * 0.78, h * 0.22, Math.max(w, h) * 0.65);
+    g1.addColorStop(0, 'rgba(246, 132, 186, 0.42)');
+    g1.addColorStop(0.55, 'rgba(182, 132, 245, 0.18)');
+    g1.addColorStop(1, 'rgba(182, 132, 245, 0)');
+    c.fillStyle = g1;
+    c.fillRect(0, 0, w, h);
+    const g2 = c.createRadialGradient(w * 0.1, h * 0.86, 10, w * 0.18, h * 0.78, Math.max(w, h) * 0.55);
+    g2.addColorStop(0, 'rgba(148, 178, 255, 0.28)');
+    g2.addColorStop(1, 'rgba(148, 178, 255, 0)');
+    c.fillStyle = g2;
+    c.fillRect(0, 0, w, h);
+  } else if (atmo === 'paper-fold') {
+    const fold = (x1, y1, x2, y2, nx, ny) => {
+      c.strokeStyle = 'rgba(72, 54, 40, 0.10)';
+      c.lineWidth = 4;
+      c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+      c.strokeStyle = 'rgba(255, 255, 255, 0.24)';
+      c.lineWidth = 2;
+      c.beginPath(); c.moveTo(x1 + nx * 3, y1 + ny * 3); c.lineTo(x2 + nx * 3, y2 + ny * 3); c.stroke();
+    };
+    fold(0, h * 0.5, w, h * 0.5, 0, 1);
+    fold(w * 0.5, 0, w * 0.5, h, 1, 0);
+    const edge = c.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.34, w / 2, h / 2, Math.hypot(w, h) * 0.58);
+    edge.addColorStop(0, 'rgba(0,0,0,0)');
+    edge.addColorStop(1, 'rgba(84, 62, 42, 0.14)');
+    c.fillStyle = edge;
+    c.fillRect(0, 0, w, h);
+  } else if (atmo === 'film-grain') {
+    let seed = 9187;
+    for (let i = 0; i < 3600; i++) {
+      seed = (seed * 1664525 + 1013904223) >>> 0; const gx = seed % w;
+      seed = (seed * 1664525 + 1013904223) >>> 0; const gy = seed % h;
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      c.fillStyle = (seed & 1) ? 'rgba(255,250,240,0.09)' : 'rgba(35,28,24,0.09)';
+      c.fillRect(gx, gy, 2, 2);
+    }
+    const vig = c.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.32, w / 2, h / 2, Math.hypot(w, h) * 0.56);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(20, 14, 12, 0.24)');
+    c.fillStyle = vig;
+    c.fillRect(0, 0, w, h);
+  }
+  c.restore();
 }
 
 function paintPage(page, target, scale = 1) {
@@ -404,16 +612,122 @@ function paintPage(page, target, scale = 1) {
     const x = -el.w / 2, y = -el.h / 2;
     if (el.type === 'text') {
       const size = el.size || 44;
-      c.fillStyle = el.color || '#3f312b';
+      const padX = el.bgColor && el.bgColor !== 'transparent' ? 14 : 0;
+      const maxW = Math.max(20, el.w - padX * 2);
+      const lhMul = clamp(Number(el.lineHeight) || 1.33, 0.9, 2.5);
+      const letterSp = clamp(Number(el.letterSpacing) || 0, -4, 30);
+      const sw = clamp(Number(el.strokeWidth) || 0, 0, 20);
+      const strokeCol = el.strokeColor || '#ffffff';
+
+      if (el.bgColor && el.bgColor !== 'transparent') {
+        const br = clamp(Number(el.bgRadius ?? 18), 0, Math.min(el.w, el.h) / 2);
+        c.fillStyle = el.bgColor;
+        c.beginPath();
+        c.roundRect(x, y, el.w, el.h, br);
+        c.fill();
+      }
+
       c.font = `${el.weight || 'normal'} ${size}px ${el.family || serif}`;
       c.textBaseline = 'top';
-      const align = el.align || 'left';
-      c.textAlign = align;
-      const lx = align === 'center' ? 0 : align === 'right' ? el.w / 2 : -el.w / 2;
-      const lines = linesOf(c, el.text, el.w), lh = size * 1.33;
-      lines.forEach((line, i) => {
-        if (i * lh + size <= el.h + lh / 2) c.fillText(line, lx, y + i * lh);
-      });
+      c.fillStyle = el.color || '#3f312b';
+
+      const applyShadow = on => {
+        if (on && el.textShadow) {
+          c.shadowColor = 'rgba(28, 20, 18, 0.34)';
+          c.shadowBlur = Math.max(4, Math.round(size * 0.22));
+          c.shadowOffsetX = 0;
+          c.shadowOffsetY = Math.max(2, Math.round(size * 0.08));
+        } else {
+          c.shadowColor = 'transparent';
+          c.shadowBlur = 0;
+          c.shadowOffsetX = 0;
+          c.shadowOffsetY = 0;
+        }
+      };
+
+      const renderStr = (str, px, py, strokePass) => {
+        if (strokePass) {
+          c.lineJoin = 'round';
+          c.miterLimit = 2;
+          c.lineWidth = sw * 2;
+          c.strokeStyle = strokeCol;
+          c.strokeText(str, px, py);
+        } else {
+          c.fillText(str, px, py);
+        }
+      };
+
+      if (el.vertical) {
+        const colStep = size * lhMul;
+        const charStep = size * 1.08 + letterSp;
+        const cols = [];
+        for (const para of String(el.text || '').split('\n')) {
+          const chs = Array.from(para);
+          if (!chs.length) { cols.push([]); continue; }
+          let curCol = [];
+          for (const ch of chs) {
+            if (curCol.length * charStep + size > el.h - 4 && curCol.length) {
+              cols.push(curCol);
+              curCol = [ch];
+            } else {
+              curCol.push(ch);
+            }
+          }
+          cols.push(curCol);
+        }
+        const totalW = cols.length * colStep;
+        const align = el.align || 'right';
+        let startColX = align === 'left'
+          ? x + padX + (cols.length - 1) * colStep + colStep / 2
+          : align === 'center'
+            ? (totalW / 2) - colStep / 2
+            : x + el.w - padX - colStep / 2;
+        c.textAlign = 'center';
+        const drawVert = strokePass => {
+          applyShadow(strokePass || sw === 0);
+          cols.forEach((col, ci) => {
+            const cx = startColX - ci * colStep;
+            if (cx < x - colStep || cx > x + el.w + colStep) return;
+            col.forEach((ch, ri) => {
+              const cy = y + 4 + ri * charStep;
+              if (cy + size <= y + el.h + charStep * 0.4) renderStr(ch, cx, cy, strokePass);
+            });
+          });
+        };
+        if (sw > 0) drawVert(true);
+        drawVert(false);
+        applyShadow(false);
+      } else {
+        const align = el.align || 'left';
+        const lines = linesOf(c, el.text, maxW, letterSp), lh = size * lhMul;
+        const visH = Math.max(size, (lines.length - 1) * lh + size);
+        const startY = el.bgColor && el.bgColor !== 'transparent' ? y + Math.max(0, Math.round((el.h - visH) / 2)) : y;
+        const drawHoriz = strokePass => {
+          applyShadow(strokePass || sw === 0);
+          lines.forEach((line, i) => {
+            const ly = startY + i * lh;
+            if (ly - y + size > el.h + lh / 2) return;
+            if (!letterSp) {
+              c.textAlign = align;
+              const lx = align === 'center' ? 0 : align === 'right' ? el.w / 2 - padX : -el.w / 2 + padX;
+              renderStr(line, lx, ly, strokePass);
+            } else {
+              c.textAlign = 'left';
+              const chs = Array.from(line);
+              const widths = chs.map(ch => c.measureText(ch).width);
+              const totalLineW = widths.reduce((a, b) => a + b, 0) + Math.max(0, chs.length - 1) * letterSp;
+              let cx = align === 'center' ? -totalLineW / 2 : align === 'right' ? el.w / 2 - padX - totalLineW : -el.w / 2 + padX;
+              chs.forEach((ch, idx) => {
+                renderStr(ch, cx, ly, strokePass);
+                cx += widths[idx] + letterSp;
+              });
+            }
+          });
+        };
+        if (sw > 0) drawHoriz(true);
+        drawHoriz(false);
+        applyShadow(false);
+      }
     } else if (el.type === 'shape') {
       const r = clamp(el.radius || 0, 0, Math.min(el.w, el.h) / 2);
       c.beginPath();
@@ -428,6 +742,7 @@ function paintPage(page, target, scale = 1) {
     }
     c.restore();
   }
+  drawAtmosphere(c, page.atmosphere, w, h);
   c.restore();
 }
 
@@ -455,17 +770,48 @@ function handles(el) {
 }
 
 function paintSelection() {
+  if (snapGuides.length) {
+    ctx.save();
+    ctx.strokeStyle = '#e24c7a';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 8]);
+    for (const g of snapGuides) {
+      ctx.beginPath();
+      if (g.axis === 'x') { ctx.moveTo(g.pos, 0); ctx.lineTo(g.pos, H()); }
+      else { ctx.moveTo(0, g.pos); ctx.lineTo(W(), g.pos); }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  const entries = selectedEntries();
+  for (const { el, i } of entries) {
+    if (i === selected) continue;
+    ctx.save();
+    ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
+    ctx.rotate((el.rotation || 0) * Math.PI / 180);
+    ctx.strokeStyle = '#9b78b3';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([8, 6]);
+    ctx.strokeRect(-el.w / 2, -el.h / 2, el.w, el.h);
+    ctx.restore();
+  }
+
   const el = activePage().elements[selected];
   if (!el) return;
   const h = handles(el);
   ctx.save();
   ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
   ctx.rotate((el.rotation || 0) * Math.PI / 180);
-  ctx.strokeStyle = '#6c467c';
+  ctx.strokeStyle = el.locked ? '#9a8e87' : '#6c467c';
   ctx.lineWidth = 3;
+  if (el.locked) ctx.setLineDash([8, 6]);
   ctx.strokeRect(-el.w / 2, -el.h / 2, el.w, el.h);
-  ctx.beginPath(); ctx.moveTo(0, -el.h / 2); ctx.lineTo(0, -el.h / 2 - 46); ctx.stroke();
+  if (!el.locked) {
+    ctx.beginPath(); ctx.moveTo(0, -el.h / 2); ctx.lineTo(0, -el.h / 2 - 46); ctx.stroke();
+  }
   ctx.restore();
+  if (el.locked) return;
 
   const dot = (pt, fill, r = 10) => {
     ctx.beginPath(); ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
@@ -487,6 +833,12 @@ async function redraw() {
 function redrawSync() {
   paintPage(activePage(), canvas, 1);
   paintSelection();
+  if (doodlePts && doodlePts.length) {
+    const style = $('doodleType')?.value || 'marker';
+    const color = $('doodleColor')?.value || '#3f312b';
+    const size = Number($('doodleSize')?.value || 10);
+    drawDoodleStroke(ctx, doodlePts, style, color, size, 0, 0);
+  }
 }
 
 function snapshot() {
@@ -497,7 +849,8 @@ function snapshot() {
 function modify(fn) {
   snapshot();
   fn();
-  if (selected >= activePage().elements.length) selected = activePage().elements.length - 1;
+  const arr = activePage().elements;
+  if (selected >= arr.length) selectOnly(arr.length - 1);
   persist();
   redraw();
   renderProps();
@@ -506,21 +859,21 @@ function undo() {
   if (!undoStack.length) return;
   redoStack.push(clone(activePage()));
   doc.pages[current] = undoStack.pop();
-  selected = -1;
+  selectOnly(-1);
   persist(); redraw(); renderProps();
 }
 function redo() {
   if (!redoStack.length) return;
   undoStack.push(clone(activePage()));
   doc.pages[current] = redoStack.pop();
-  selected = -1;
+  selectOnly(-1);
   persist(); redraw(); renderProps();
 }
 
 function addElement(el) {
   modify(() => {
     activePage().elements.push(el);
-    selected = activePage().elements.length - 1;
+    selectOnly(activePage().elements.length - 1);
   });
 }
 
@@ -569,7 +922,9 @@ function showPhotoEditor(initialMode = 'reframe') {
          <button type="button" data-swatch="#2d282c" style="background:#2d282c" title="炭黑"></button>
         </div>
        </div>
-       <strong class="pe-title">画框形状与镜像</strong>
+       <strong class="pe-title">相框样式、形状与镜像</strong>
+       <label>相框风格<select data-frame="style"><option value="none">无额外相框</option><option value="polaroid">拍立得经典白边</option><option value="film35">35mm 复古胶片</option><option value="stamp">邮票锯齿白框</option></select></label>
+       <label class="pe-caption-row">拍立得手写附言<input type="text" data-frame="caption" placeholder="例如：2026.11 晴 · 今日光影"></label>
        <label>裁切形状<select data-frame="shape"><option value="none">原图直角（或保留透明轮廓）</option><option value="rounded">圆角卡片</option><option value="circle">圆形 / 椭圆</option><option value="torn">手撕纸边</option></select></label>
        <label class="pe-radius-row">圆角大小 <strong data-value="frameRadius">36px</strong><input data-frame="radius" type="range" min="0" max="200" step="2"></label>
        <div class="photo-edit-buttons"><button type="button" data-action="flip-x">⇄ 水平镜像</button><button type="button" data-action="flip-y">⇅ 垂直翻转</button></div>
@@ -607,7 +962,7 @@ function showPhotoEditor(initialMode = 'reframe') {
        <label>工具<select data-field="matmode"><option value="magic">🪄 点击删除相近背景</option><option value="erase">🖌 橡皮擦</option><option value="restore">↩ 恢复画笔</option></select></label>
        <label>容差 <strong data-mat-tolerance-label>44</strong><input data-field="tolerance" type="range" min="5" max="145" value="44"></label>
        <label>画笔 <strong data-mat-brush-label>28</strong><input data-field="brushsize" type="range" min="5" max="160" value="28"></label>
-       <div class="photo-edit-buttons"><button data-action="four-corners">✨ 清除四角</button><button data-action="mat-undo">↶ 撤销</button><button data-action="mat-reset">还原</button></div>
+       <div class="photo-edit-buttons"><button data-action="four-corners">✨ 清除四角</button><button data-action="mat-undo">↶ 撤销</button><button data-action="mat-reset">还原</button><button type="button" data-action="mat-save-sticker">★ 存为我的贴纸</button></div>
       </div>
       <div class="photo-edit-buttons"><button data-action="reset-all">重置全部效果</button></div>
      </aside></div>
@@ -769,6 +1124,9 @@ function showPhotoEditor(initialMode = 'reframe') {
       qa('[data-value="strokeWidth"]').textContent = draft.stroke.width + 'px';
       qa('[data-stroke="color"]').value = draft.stroke.color;
       qa('.pe-stroke-controls').classList.toggle('is-disabled', !draft.stroke.enabled);
+      qa('[data-frame="style"]').value = draft.frame.frameStyle || 'none';
+      qa('[data-frame="caption"]').value = draft.frame.caption || '';
+      qa('.pe-caption-row').hidden = (draft.frame.frameStyle || 'none') !== 'polaroid';
       qa('[data-frame="shape"]').value = draft.frame.shape;
       qa('[data-frame="radius"]').value = draft.frame.radius;
       qa('[data-value="frameRadius"]').textContent = draft.frame.radius + 'px';
@@ -787,6 +1145,8 @@ function showPhotoEditor(initialMode = 'reframe') {
     qa('[data-stroke="width"]').addEventListener('input', e => { draft.stroke.width = Number(e.target.value); syncFrameInputs(); draw(); });
     qa('[data-stroke="color"]').addEventListener('input', e => { draft.stroke.color = e.target.value; syncFrameInputs(); draw(); });
     backdrop.querySelectorAll('[data-swatch]').forEach(b => b.addEventListener('click', () => { draft.stroke.enabled = true; draft.stroke.color = b.dataset.swatch; syncFrameInputs(); draw(); }));
+    qa('[data-frame="style"]').addEventListener('change', e => { draft.frame.frameStyle = e.target.value; syncFrameInputs(); draw(); });
+    qa('[data-frame="caption"]').addEventListener('input', e => { draft.frame.caption = e.target.value; draw(); });
     qa('[data-frame="shape"]').addEventListener('change', e => { draft.frame.shape = e.target.value; syncFrameInputs(); draw(); });
     qa('[data-frame="radius"]').addEventListener('input', e => { draft.frame.radius = Number(e.target.value); syncFrameInputs(); draw(); });
     byAction('flip-x').onclick = () => { draft.frame.flipX = !draft.frame.flipX; syncFrameInputs(); draw(); };
@@ -803,10 +1163,20 @@ function showPhotoEditor(initialMode = 'reframe') {
     byAction('center').onclick = () => { draft.offsetX = 0; draft.offsetY = 0; draw(); };
     byAction('fit').onclick = () => { draft.fit = 'contain'; draft.zoom = 1; draft.offsetX = 0; draft.offsetY = 0; draw(); };
     byAction('reset-crop').onclick = () => { draft.crop = { x: 0, y: 0, w: 1, h: 1 }; draw(); };
-    byAction('reset-all').onclick = () => { draft.crop = { x: 0, y: 0, w: 1, h: 1 }; draft.fit = 'contain'; draft.zoom = 1; draft.offsetX = 0; draft.offsetY = 0; applyPreset({}); draft.stroke = { enabled: false, width: 14, color: '#ffffff' }; draft.frame = { shape: 'none', radius: 36, flipX: false, flipY: false }; draft.shadow = { enabled: false, blur: 15, x: 5, y: 9, opacity: .28, color: '#32263c' }; syncFrameInputs(); draw(); };
+    byAction('reset-all').onclick = () => { draft.crop = { x: 0, y: 0, w: 1, h: 1 }; draft.fit = 'contain'; draft.zoom = 1; draft.offsetX = 0; draft.offsetY = 0; applyPreset({}); draft.stroke = { enabled: false, width: 14, color: '#ffffff' }; draft.frame = { shape: 'none', radius: 36, flipX: false, flipY: false, frameStyle: 'none', caption: '' }; draft.shadow = { enabled: false, blur: 15, x: 5, y: 9, opacity: .28, color: '#32263c' }; syncFrameInputs(); draw(); };
     byAction('four-corners').onclick = () => { setupMatte(); stashMask(); const t = +qa('[data-field="tolerance"]').value; for (const [x, y] of [[1, 1], [matte.w - 2, 1], [1, matte.h - 2], [matte.w - 2, matte.h - 2]]) colorFlood(x, y, t); paintMatte(); draw(); };
     byAction('mat-undo').onclick = () => { if (!matte || !matHistory.length) return; matte.removed = matHistory.pop(); paintMatte(); draw(); };
     byAction('mat-reset').onclick = () => { if (!matte) return; stashMask(); matte.removed.fill(0); paintMatte(); draw(); };
+    byAction('mat-save-sticker').onclick = async () => {
+      setupMatte();
+      const src = matWork.toDataURL('image/png');
+      const stamp = new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+      userStickers.unshift({ id: 'u_' + uid(), name: '抠图贴纸 ' + stamp, src });
+      if (db) await writeDb(STICKERS_KEY, userStickers);
+      activeStickerFolder = 'user';
+      renderStickersPanel();
+      status('★ 已保存到「我的导入」贴纸库，可随时复用');
+    };
     byAction('close').onclick = close;
     byAction('cancel').onclick = close;
     byAction('apply').onclick = () => {
@@ -920,7 +1290,7 @@ function renderPagesList() {
     const info = document.createElement('div');
     info.innerHTML = `<span>第 ${i + 1} 页</span><small>${pg.elements.length} 个元素</small>`;
     btn.append(thumb, info);
-    btn.onclick = () => { current = i; selected = -1; undoStack = []; redoStack = []; $('pageLabel').textContent = `第 ${i + 1} 页`; renderPagesList(); redraw(); renderProps(); };
+    btn.onclick = () => { current = i; selectOnly(-1); undoStack = []; redoStack = []; $('pageLabel').textContent = `第 ${i + 1} 页`; renderPagesList(); redraw(); renderProps(); };
     list.append(btn);
     ensureImages(pg).then(() => paintPage(pg, thumb, thumb.width / W()));
   });
@@ -939,7 +1309,7 @@ function renderProps() {
   const bgHead = document.createElement('div'); bgHead.className = 'plog-card-head';
   bgHead.innerHTML = '<strong>🎨 页底颜色与 Plog 色系</strong>';
   const bgAll = document.createElement('button'); bgAll.type = 'button'; bgAll.textContent = '应用到全部页';
-  bgAll.onclick = () => { modify(() => { const bg = activePage().bg, pat = activePage().bgPattern; doc.pages.forEach(p => { p.bg = bg; p.bgPattern = pat; }); }); status('✓ 已应用到全部页'); };
+  bgAll.onclick = () => { modify(() => { const bg = activePage().bg, pat = activePage().bgPattern, atmo = activePage().atmosphere || 'none'; doc.pages.forEach(p => { p.bg = bg; p.bgPattern = pat; p.atmosphere = atmo; }); }); status('✓ 已应用到全部页'); };
   bgHead.append(bgAll);
 
   const bgRow = document.createElement('div'); bgRow.className = 'plog-bg-row';
@@ -950,7 +1320,11 @@ function renderProps() {
   PLOG_BG_PATTERNS.forEach(([v, lbl]) => { const o = document.createElement('option'); o.value = v; o.textContent = lbl; patSel.append(o); });
   patSel.value = activePage().bgPattern || 'none';
   patSel.onchange = () => modify(() => { activePage().bgPattern = patSel.value; });
-  bgRow.append(bgPick, patSel);
+  const atmoSel = document.createElement('select');
+  PLOG_ATMOSPHERES.forEach(([v, lbl]) => { const o = document.createElement('option'); o.value = v; o.textContent = lbl; atmoSel.append(o); });
+  atmoSel.value = activePage().atmosphere || 'none';
+  atmoSel.onchange = () => modify(() => { activePage().atmosphere = atmoSel.value; });
+  bgRow.append(bgPick, patSel, atmoSel);
 
   const palBox = document.createElement('div'); palBox.className = 'plog-palettes';
   PLOG_PALETTES.forEach(pal => {
@@ -1009,6 +1383,46 @@ function renderProps() {
         const b = document.createElement('button'); b.type = 'button'; b.textContent = s; b.onclick = () => modify(() => { el.align = v; }); al.append(b);
       });
       panel.append(al);
+
+      const styleRow = document.createElement('div'); styleRow.className = 'prop-btns';
+      [
+        ['白边手账字', () => modify(() => { el.strokeWidth = 6; el.strokeColor = '#ffffff'; el.bgColor = ''; el.textShadow = true; })],
+        ['胶囊标签字', () => modify(() => { el.bgColor = '#ffeaa0'; el.bgRadius = Math.round((el.h || 60) / 2); el.strokeWidth = 0; el.color = '#3f312b'; el.align = 'center'; })],
+        ['复古竖排字', () => modify(() => { el.vertical = !el.vertical; if (el.vertical && el.w > el.h) { const nw = Math.max(90, Math.round(el.w * 0.42)); el.h = Math.max(260, el.w); el.w = nw; } })],
+        ['杂志宽字距', () => modify(() => { el.letterSpacing = 8; el.lineHeight = 1.6; el.strokeWidth = 0; el.bgColor = ''; })]
+      ].forEach(([lbl, fn]) => {
+        const b = document.createElement('button'); b.type = 'button'; b.textContent = lbl; b.onclick = fn; styleRow.append(b);
+      });
+      panel.append(styleRow);
+
+      const richGrid = document.createElement('div'); richGrid.className = 'prop-grid';
+      const swWrap = field('文字描边 px', 'strokeWidth', el.strokeWidth || 0, 'number', v => modify(() => { el.strokeWidth = clamp(+v, 0, 20); }));
+      const scWrap = field('描边颜色', 'strokeColor', el.strokeColor || '#ffffff', 'color');
+      const lsWrap = field('字距 px', 'letterSpacing', el.letterSpacing || 0, 'number', v => modify(() => { el.letterSpacing = clamp(+v, -4, 30); }));
+      const lhWrap = field('行距倍', 'lineHeight', el.lineHeight || 1.33, 'number', v => modify(() => { el.lineHeight = clamp(+v, 0.9, 2.5); }));
+      lhWrap.querySelector('input').step = '0.05';
+      richGrid.append(swWrap, scWrap, lsWrap, lhWrap);
+      panel.append(richGrid);
+
+      const mkCheck = (text, checked, onChange) => {
+        const lb = document.createElement('label'); lb.className = 'prop-check';
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!checked;
+        cb.onchange = () => onChange(cb.checked);
+        lb.append(cb, document.createTextNode(text));
+        return lb;
+      };
+      const chkGrid = document.createElement('div'); chkGrid.className = 'prop-grid';
+      chkGrid.append(
+        mkCheck('开启文字投影', el.textShadow, v => modify(() => { el.textShadow = v; })),
+        mkCheck('竖排书写', el.vertical, v => modify(() => { el.vertical = v; }))
+      );
+      panel.append(chkGrid);
+
+      const bgWrap = document.createElement('div'); bgWrap.className = 'prop-grid';
+      const hasBg = !!(el.bgColor && el.bgColor !== 'transparent');
+      bgWrap.append(mkCheck('文字背景胶囊', hasBg, v => modify(() => { el.bgColor = v ? (el.bgColor && el.bgColor !== 'transparent' ? el.bgColor : '#ffeaa0') : ''; el.bgRadius = el.bgRadius ?? 22; })));
+      if (hasBg) bgWrap.append(field('底色选择', 'bgColor', el.bgColor || '#ffeaa0', 'color'));
+      panel.append(bgWrap);
     } else if (el.type === 'shape') {
       panel.append(field('填充颜色', 'fill', el.fill || '#e7dfd4', 'color'));
       panel.append(field('圆角 px', 'radius', el.radius || 0, 'number'));
@@ -1018,12 +1432,25 @@ function renderProps() {
       const b3 = document.createElement('button'); b3.className = 'image-effect-primary'; b3.textContent = '☀ 调色滤镜 / 纸张阴影'; b3.onclick = () => showPhotoEditor('adjust');
       const bRep = document.createElement('button'); bRep.textContent = '↻ 替换照片'; bRep.onclick = () => $('replacePhotoInput').click();
       panel.append(b1, b2, b3, bRep);
+
+      const curFr = imageFrame(el);
+      const frRow = document.createElement('div'); frRow.className = 'frame-quick-row';
+      [['none', '无框'], ['polaroid', '拍立得'], ['film35', '35mm'], ['stamp', '邮票框']].forEach(([styleKey, lbl]) => {
+        const fb = document.createElement('button'); fb.type = 'button'; fb.textContent = lbl;
+        if (curFr.frameStyle === styleKey) fb.classList.add('active');
+        fb.onclick = () => modify(() => { el.frame = { ...imageFrame(el), frameStyle: styleKey }; });
+        frRow.append(fb);
+      });
+      panel.append(frRow);
+      if (curFr.frameStyle === 'polaroid') {
+        panel.append(field('拍立得手写附言', 'caption', curFr.caption || '', 'text', val => modify(() => { el.frame = { ...imageFrame(el), caption: val }; })));
+      }
     }
 
     const acts = document.createElement('div'); acts.className = 'prop-btns';
     [['上移一层', () => { if (selected < activePage().elements.length - 1) modify(() => { const a = activePage().elements; [a[selected], a[selected + 1]] = [a[selected + 1], a[selected]]; selected++; }); }],
      ['下移一层', () => { if (selected > 0) modify(() => { const a = activePage().elements; [a[selected], a[selected - 1]] = [a[selected - 1], a[selected]]; selected--; }); }],
-     ['删除', () => { modify(() => { activePage().elements.splice(selected, 1); selected = -1; }); }]].forEach(([s, fn]) => {
+     ['删除', () => { modify(() => { activePage().elements.splice(selected, 1); selectOnly(-1); }); }]].forEach(([s, fn]) => {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = s; b.onclick = fn; acts.append(b);
     });
     panel.append(acts);
@@ -1032,16 +1459,77 @@ function renderProps() {
   // 3. Layer List
   activePage().elements.slice().reverse().forEach((layer, j) => {
     const idx = activePage().elements.length - 1 - j;
+    const item = document.createElement('div'); item.className = 'layer-item';
     const b = document.createElement('button');
-    b.className = 'layer-row' + (idx === selected ? ' active' : '');
-    b.textContent = (layer.type === 'text' ? 'T ' + String(layer.text).slice(0, 20) : layer.type === 'image' ? '▣ 图片 / 贴纸' : '◇ 装饰色块');
-    b.onclick = () => { selected = idx; redraw(); renderProps(); };
-    layers.append(b);
+    b.type = 'button';
+    b.className = 'layer-row' + (selectedIds.has(layer.id) || idx === selected ? ' active' : '');
+    const title = layer.role === 'doodle' ? '✎ 自由涂鸦' : layer.type === 'text' ? 'T ' + String(layer.text).slice(0, 18) : layer.type === 'image' ? '▣ 图片 / 贴纸' : '◇ 装饰色块';
+    b.textContent = (layer.hidden ? '[隐藏] ' : '') + title;
+    b.onclick = e => {
+      if (e.shiftKey) toggleSelect(idx);
+      else selectOnly(idx);
+      redraw(); renderProps();
+    };
+    const eye = document.createElement('button');
+    eye.type = 'button';
+    eye.className = 'layer-icon-btn' + (layer.hidden ? '' : ' on');
+    eye.title = layer.hidden ? '显示图层' : '隐藏图层';
+    eye.textContent = layer.hidden ? '◌' : '👁';
+    eye.onclick = () => modify(() => { layer.hidden = !layer.hidden; });
+    const lock = document.createElement('button');
+    lock.type = 'button';
+    lock.className = 'layer-icon-btn' + (layer.locked ? ' on' : '');
+    lock.title = layer.locked ? '解锁图层' : '锁定图层';
+    lock.textContent = layer.locked ? '🔒' : '🔓';
+    lock.onclick = () => modify(() => { layer.locked = !layer.locked; });
+    item.append(b, eye, lock);
+    layers.append(item);
   });
 }
 
 function buildPlogLibrary() {
   const host = $('plogLibrary'); host.replaceChildren();
+  const sec0 = document.createElement('div'); sec0.className = 'plog-section';
+  sec0.innerHTML = '<h4>⊞ 一键拼图布局（照片网格）</h4><p>点击套用常见杂志/拍立得照片网格，已有照片会自动排入格子</p>';
+  const g0 = document.createElement('div'); g0.className = 'plog-chip-grid';
+  PLOG_LAYOUTS.forEach(lay => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'plog-chip-btn';
+    b.innerHTML = `<b>${lay.name}</b><small>${lay.desc}</small>`;
+    b.onclick = () => {
+      const pw = W(), ph = H();
+      const slots = lay.slots(pw, ph);
+      modify(() => {
+        const pg = activePage();
+        const existingPhotos = pg.elements.filter(e => e.type === 'image' && e.role !== 'doodle' && e.role !== 'slot' && !String(e.src || '').startsWith('stickers/'));
+        const keptOthers = pg.elements.filter(e => !(e.type === 'image' && (e.role === 'slot' || existingPhotos.includes(e))));
+        const nextPhotos = slots.map(([rx, ry, rw, rh, rot = 0], idx) => {
+          const x = Math.round(pw * rx), y = Math.round(ph * ry), w = Math.round(pw * rw), h = Math.round(ph * rh);
+          const reused = existingPhotos[idx];
+          if (reused) {
+            reused.x = x; reused.y = y; reused.w = w; reused.h = h;
+            reused.rotation = rot; reused.fit = 'cover';
+            reused.frame = { ...imageFrame(reused), frameStyle: lay.polaroid ? 'polaroid' : imageFrame(reused).frameStyle };
+            return reused;
+          }
+          const phSrc = plogSvgUri(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="100%" height="100%" fill="#ebe5dd"/><rect x="16" y="16" width="${Math.max(10, w - 32)}" height="${Math.max(10, h - 32)}" rx="10" fill="none" stroke="#c3b4a2" stroke-width="3" stroke-dasharray="10 8"/><text x="50%" y="48%" dominant-baseline="middle" text-anchor="middle" fill="#8b7968" font-family="sans-serif" font-size="26">PHOTO ${idx + 1}</text><text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle" fill="#a29080" font-family="sans-serif" font-size="18">点击右侧「替换照片」</text></svg>`);
+          return {
+            id: uid(), type: 'image', role: 'slot', src: phSrc, x, y, w, h,
+            fit: 'cover', crop: { x: 0, y: 0, w: 1, h: 1 }, zoom: 1, offsetX: 0, offsetY: 0,
+            rotation: rot, opacity: 1,
+            frame: { shape: 'none', radius: 36, flipX: false, flipY: false, frameStyle: lay.polaroid ? 'polaroid' : 'none', caption: '' }
+          };
+        });
+        const leftovers = existingPhotos.slice(slots.length);
+        pg.elements = [...nextPhotos, ...leftovers, ...keptOthers];
+        selectOnly(nextPhotos.length ? 0 : -1);
+      });
+      status(`✓ 已套用「${lay.name}」布局`);
+    };
+    g0.append(b);
+  });
+  sec0.append(g0);
+  host.append(sec0);
+
   const sec1 = document.createElement('div'); sec1.className = 'plog-section';
   sec1.innerHTML = '<h4>✦ Plog 文字模板（点击插入）</h4><p>插入后可任意修改文字、字号、字体与颜色</p>';
   const g1 = document.createElement('div'); g1.className = 'plog-chip-grid';
@@ -1052,7 +1540,7 @@ function buildPlogLibrary() {
       modify(() => {
         const els = item.make(W(), H());
         activePage().elements.push(...els);
-        selected = activePage().elements.length - 1;
+        selectOnly(activePage().elements.length - 1);
       });
       status(`✓ 已插入「${item.name}」`);
     };
@@ -1130,7 +1618,7 @@ function locate(e) {
 }
 function hit(p) {
   const arr = activePage().elements;
-  if (selected >= 0 && arr[selected]) {
+  if (selected >= 0 && arr[selected] && !arr[selected].locked && !arr[selected].hidden) {
     const t = arr[selected], h = handles(t);
     if (Math.hypot(p.x - h.rot.x, p.y - h.rot.y) < 30) return { mode: 'rotate', idx: selected };
     if (Math.hypot(p.x - h.size.x, p.y - h.size.y) < 34) return { mode: 'size', idx: selected };
@@ -1140,51 +1628,158 @@ function hit(p) {
     }
   }
   for (let i = arr.length - 1; i >= 0; i--) {
-    const t = arr[i]; if (t.hidden) continue;
+    const t = arr[i]; if (t.hidden || t.locked) continue;
     const q = localPoint(t, p);
     if (q.x >= t.x - 10 && q.x <= t.x + t.w + 10 && q.y >= t.y - 10 && q.y <= t.y + t.h + 10) return { mode: 'move', idx: i };
   }
   return { mode: 'none', idx: -1 };
 }
 
+function snapElementPosition(el, rawX, rawY, others) {
+  const th = 10, guides = [];
+  const xs = [W() / 2, 48, W() - 48];
+  const ys = [H() / 2, 48, H() - 48];
+  for (const o of others) {
+    if (o.hidden) continue;
+    xs.push(o.x, o.x + o.w / 2, o.x + o.w);
+    ys.push(o.y, o.y + o.h / 2, o.y + o.h);
+  }
+  let bestDx = th + 1, bestX = rawX, gx = null;
+  for (const offset of [0, el.w / 2, el.w]) {
+    for (const tx of xs) {
+      const d = Math.abs(rawX + offset - tx);
+      if (d < bestDx) { bestDx = d; bestX = tx - offset; gx = tx; }
+    }
+  }
+  if (gx !== null) guides.push({ axis: 'x', pos: gx });
+
+  let bestDy = th + 1, bestY = rawY, gy = null;
+  for (const offset of [0, el.h / 2, el.h]) {
+    for (const ty of ys) {
+      const d = Math.abs(rawY + offset - ty);
+      if (d < bestDy) { bestDy = d; bestY = ty - offset; gy = ty; }
+    }
+  }
+  if (gy !== null) guides.push({ axis: 'y', pos: gy });
+
+  snapGuides = guides;
+  el.x = bestX;
+  el.y = bestY;
+}
+
+async function commitDoodleStroke(pts) {
+  if (!pts || !pts.length) return;
+  const style = $('doodleType')?.value || 'marker';
+  const color = $('doodleColor')?.value || '#e26d5a';
+  const size = Number($('doodleSize')?.value || 14);
+  const pad = Math.ceil(size * 1.4 + 14);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [px, py] of pts) {
+    if (px < minX) minX = px;
+    if (py < minY) minY = py;
+    if (px > maxX) maxX = px;
+    if (py > maxY) maxY = py;
+  }
+  const bx = Math.max(0, Math.floor(minX - pad));
+  const by = Math.max(0, Math.floor(minY - pad));
+  const bw = Math.max(32, Math.min(W() - bx, Math.ceil(maxX + pad) - bx));
+  const bh = Math.max(32, Math.min(H() - by, Math.ceil(maxY + pad) - by));
+  const off = document.createElement('canvas');
+  off.width = bw; off.height = bh;
+  drawDoodleStroke(off.getContext('2d'), pts, style, color, size, bx, by);
+  const src = off.toDataURL('image/png');
+  await getImg(src);
+  addElement({
+    id: uid(), type: 'image', role: 'doodle', src,
+    x: bx, y: by, w: bw, h: bh, fit: 'contain',
+    crop: { x: 0, y: 0, w: 1, h: 1 }, zoom: 1, offsetX: 0, offsetY: 0, rotation: 0, opacity: 1
+  });
+  status('✓ 已添加手绘涂鸦图层（可选中移动、缩放或删除）');
+}
+
 canvas.addEventListener('pointerdown', e => {
-  const p = locate(e), found = hit(p);
-  if (found.idx < 0) { selected = -1; redrawSync(); renderProps(); return; }
-  selected = found.idx;
+  const p = locate(e);
+  if (doodleMode) {
+    doodlePts = [[p.x, p.y]];
+    canvas.setPointerCapture(e.pointerId);
+    redrawSync();
+    return;
+  }
+  const found = hit(p);
+  if (found.idx < 0) { selectOnly(-1); snapGuides = []; redrawSync(); renderProps(); return; }
+  const arr = activePage().elements;
+  if (found.mode === 'move' && e.shiftKey) {
+    toggleSelect(found.idx);
+    if (!selectedIds.size) { redrawSync(); renderProps(); return; }
+  } else if (found.mode === 'move' && selectedIds.size > 1 && selectedIds.has(arr[found.idx].id)) {
+    selected = found.idx;
+  } else {
+    selectOnly(found.idx);
+  }
+  const group = selectedEntries().filter(x => !x.el.locked).map(x => ({ idx: x.i, origX: x.el.x, origY: x.el.y }));
   snapshot();
-  drag = { mode: found.mode, start: p, orig: clone(activePage().elements[selected]) };
+  drag = { mode: found.mode, start: p, orig: clone(arr[selected]), group };
   canvas.setPointerCapture(e.pointerId);
   redrawSync(); renderProps();
 });
 canvas.addEventListener('pointermove', e => {
+  const p = locate(e);
+  if (doodleMode && doodlePts) {
+    const last = doodlePts[doodlePts.length - 1];
+    if (!last || Math.hypot(p.x - last[0], p.y - last[1]) >= 2) {
+      doodlePts.push([p.x, p.y]);
+      redrawSync();
+    }
+    return;
+  }
   if (!drag) return;
-  const p = locate(e), el = activePage().elements[selected], o = drag.orig;
+  const arr = activePage().elements, el = arr[selected], o = drag.orig;
   if (!el) return;
   if (drag.mode === 'move') {
-    el.x = o.x + (p.x - drag.start.x);
-    el.y = o.y + (p.y - drag.start.y);
-  } else if (drag.mode === 'rotate') {
-    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
-    el.rotation = Math.round(Math.atan2(p.y - cy, p.x - cx) * 180 / Math.PI + 90);
-  } else if (drag.mode === 'size') {
-    const q = localPoint(o, p), s = Math.max(.15, Math.max((q.x - o.x) / o.w, (q.y - o.y) / o.h));
-    el.w = Math.max(40, o.w * s); el.h = Math.max(40, o.h * s);
-    if (el.type === 'text') el.size = Math.max(12, Math.round((o.size || 44) * s));
-  } else if (drag.mode === 'width') {
-    const q = localPoint(o, p); el.w = Math.max(40, q.x - o.x);
-  } else if (drag.mode === 'height') {
-    const q = localPoint(o, p); el.h = Math.max(40, q.y - o.y);
+    const dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+    if (drag.group && drag.group.length > 1) {
+      snapGuides = [];
+      for (const g of drag.group) {
+        if (arr[g.idx]) { arr[g.idx].x = g.origX + dx; arr[g.idx].y = g.origY + dy; }
+      }
+    } else if (e.altKey) {
+      snapGuides = [];
+      el.x = o.x + dx;
+      el.y = o.y + dy;
+    } else {
+      snapElementPosition(el, o.x + dx, o.y + dy, arr.filter((_, i) => i !== selected));
+    }
+  } else {
+    snapGuides = [];
+    if (drag.mode === 'rotate') {
+      const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+      el.rotation = Math.round(Math.atan2(p.y - cy, p.x - cx) * 180 / Math.PI + 90);
+    } else if (drag.mode === 'size') {
+      const q = localPoint(o, p), s = Math.max(.15, Math.max((q.x - o.x) / o.w, (q.y - o.y) / o.h));
+      el.w = Math.max(40, o.w * s); el.h = Math.max(40, o.h * s);
+      if (el.type === 'text') el.size = Math.max(12, Math.round((o.size || 44) * s));
+    } else if (drag.mode === 'width') {
+      const q = localPoint(o, p); el.w = Math.max(40, q.x - o.x);
+    } else if (drag.mode === 'height') {
+      const q = localPoint(o, p); el.h = Math.max(40, q.y - o.y);
+    }
   }
   redrawSync();
 });
 canvas.addEventListener('pointerup', () => {
+  if (doodleMode && doodlePts) {
+    const pts = doodlePts; doodlePts = null;
+    commitDoodleStroke(pts);
+    return;
+  }
   if (!drag) return;
-  drag = null; persist(); updateCurrentThumb(); renderProps();
+  drag = null; snapGuides = []; persist(); redrawSync(); updateCurrentThumb(); renderProps();
 });
 canvas.addEventListener('dblclick', e => {
+  if (doodleMode) return;
   const found = hit(locate(e));
   if (found.idx >= 0 && activePage().elements[found.idx]?.type === 'image') {
-    selected = found.idx; showPhotoEditor('reframe');
+    selectOnly(found.idx); showPhotoEditor('reframe');
   }
 });
 
@@ -1244,17 +1839,48 @@ function bind() {
     if (!file || el?.type !== 'image') return;
     const src = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(file); });
     await getImg(src);
-    modify(() => { el.src = src; el.crop = { x: 0, y: 0, w: 1, h: 1 }; el.zoom = 1; el.offsetX = 0; el.offsetY = 0; });
+    modify(() => { el.src = src; delete el.role; el.crop = { x: 0, y: 0, w: 1, h: 1 }; el.zoom = 1; el.offsetX = 0; el.offsetY = 0; });
   };
   $('addText').onclick = () => addElement(T('写下一句此刻的心情', Math.round(W() * 0.15), Math.round(H() * 0.4), Math.round(W() * 0.7), 90, 48, '#3f312b', serif, { align: 'center' }));
   $('addShape').onclick = () => addElement(S(Math.round(W() * 0.25), Math.round(H() * 0.35), Math.round(W() * 0.5), 260, '#e8dfd3', { radius: 16 }));
+  $('doodleToggle').onclick = () => setDoodleMode(!doodleMode);
+  $('doodleDone').onclick = () => setDoodleMode(false);
+  $('doodleSize').oninput = e => { $('doodleSizeVal').textContent = e.target.value; };
+  document.querySelectorAll('.doodle-swatches [data-dcolor]').forEach(b => {
+    b.onclick = () => { $('doodleColor').value = b.dataset.dcolor; };
+  });
+
+  const curZoom = () => canvasZoom || clamp(canvas.getBoundingClientRect().width / W(), 0.35, 1.5);
+  $('zoomOut').onclick = () => { canvasZoom = clamp(Math.round((curZoom() - 0.15) * 100) / 100, 0.35, 2.0); applyCanvasZoom(); };
+  $('zoomIn').onclick = () => { canvasZoom = clamp(Math.round((curZoom() + 0.15) * 100) / 100, 0.35, 2.0); applyCanvasZoom(); };
+  $('zoomFit').onclick = () => { canvasZoom = 0; applyCanvasZoom(); };
+
   $('undo').onclick = undo;
   $('redo').onclick = redo;
   $('duplicateEl').onclick = () => {
-    const el = activePage().elements[selected]; if (!el) return;
-    const copy = clone(el); copy.id = uid(); copy.x += 28; copy.y += 28; addElement(copy);
+    const items = selectedEntries();
+    if (!items.length) return;
+    modify(() => {
+      const nextIds = new Set();
+      for (const { el } of items) {
+        const copy = clone(el);
+        copy.id = uid(); copy.locked = false; copy.x += 28; copy.y += 28;
+        activePage().elements.push(copy);
+        nextIds.add(copy.id);
+      }
+      selectedIds = nextIds;
+      selected = activePage().elements.length - 1;
+    });
   };
-  $('deleteEl').onclick = () => { if (selected >= 0) modify(() => { activePage().elements.splice(selected, 1); selected = -1; }); };
+  $('deleteEl').onclick = () => {
+    const items = selectedEntries();
+    if (!items.length) return;
+    const drop = new Set(items.map(x => x.el.id));
+    modify(() => {
+      activePage().elements = activePage().elements.filter(e => !drop.has(e.id));
+      selectOnly(-1);
+    });
+  };
 
   $('paperPreset').onchange = e => {
     if (e.target.value === 'custom') return;
@@ -1265,9 +1891,9 @@ function bind() {
   $('paperH').onchange = () => setPaperSize($('paperW').value, $('paperH').value);
 
   $('exportPageBtn').onclick = exportCurrentPage;
-  $('addPageBtn').onclick = () => { doc.pages.push(blankPage()); current = doc.pages.length - 1; selected = -1; persist(); renderPagesList(); redraw(); renderProps(); };
-  $('dupPageBtn').onclick = () => { const c = clone(activePage()); c.elements.forEach(e => e.id = uid()); doc.pages.splice(current + 1, 0, c); current++; selected = -1; persist(); renderPagesList(); redraw(); renderProps(); };
-  $('delPageBtn').onclick = () => { if (doc.pages.length <= 1) return alert('至少保留 1 页'); if (!confirm('删除当前页吗？')) return; doc.pages.splice(current, 1); current = Math.max(0, current - 1); selected = -1; persist(); renderPagesList(); redraw(); renderProps(); };
+  $('addPageBtn').onclick = () => { doc.pages.push(blankPage()); current = doc.pages.length - 1; selectOnly(-1); persist(); renderPagesList(); redraw(); renderProps(); };
+  $('dupPageBtn').onclick = () => { const c = clone(activePage()); c.elements.forEach(e => e.id = uid()); doc.pages.splice(current + 1, 0, c); current++; selectOnly(-1); persist(); renderPagesList(); redraw(); renderProps(); };
+  $('delPageBtn').onclick = () => { if (doc.pages.length <= 1) return alert('至少保留 1 页'); if (!confirm('删除当前页吗？')) return; doc.pages.splice(current, 1); current = Math.max(0, current - 1); selectOnly(-1); persist(); renderPagesList(); redraw(); renderProps(); };
 
   $('importFont').onclick = () => $('fontInput').click();
   $('fontInput').onchange = async e => {
@@ -1322,11 +1948,12 @@ function bind() {
   });
 
   window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && doodleMode) { setDoodleMode(false); return; }
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') { e.preventDefault(); $('duplicateEl').click(); }
-    if (e.key === 'Delete' || e.key === 'Backspace') { if (selected >= 0) { e.preventDefault(); $('deleteEl').click(); } }
+    if (e.key === 'Delete' || e.key === 'Backspace') { if (selectedEntries().length) { e.preventDefault(); $('deleteEl').click(); } }
   });
 }
 
