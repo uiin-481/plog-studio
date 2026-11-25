@@ -132,7 +132,7 @@ function syncClipboardUI() {
 function copySelected() {
   const items = selectedEntries();
   if (!items.length) return false;
-  clipboard = items.map(x => clone(x.el));
+  clipboard = items.map(x => cloneElementLight(x.el));
   clipboardSourcePage = current;
   pasteBump = 0;
   syncClipboardUI();
@@ -161,7 +161,7 @@ async function pasteClipboard() {
   modify(() => {
     const nextIds = new Set();
     for (const item of clipboard) {
-      const copy = clone(item);
+      const copy = cloneElementLight(item);
       copy.id = uid();
       copy.locked = false;
       copy.hidden = false;
@@ -252,12 +252,16 @@ function persist() {
   if (!dbReady || !db) return;
   clearTimeout(pendingSave);
   pendingSave = setTimeout(async () => {
-    const key = activeDocKey();
-    await writeDb(key, doc);
-    const list = getProjectsIndex(), cur = list.find(b => b.docKey === key);
-    if (cur) { cur.width = doc.width; cur.height = doc.height; cur.updatedAt = Date.now(); saveProjectsIndex(list); }
-    status('✓ 已自动保存 ' + new Date().toLocaleTimeString().slice(0, 5));
-  }, 260);
+    try {
+      const key = activeDocKey();
+      await writeDb(key, doc);
+      const list = getProjectsIndex(), cur = list.find(b => b.docKey === key);
+      if (cur) { cur.width = doc.width; cur.height = doc.height; cur.updatedAt = Date.now(); saveProjectsIndex(list); }
+      status('✓ 已自动保存 ' + new Date().toLocaleTimeString().slice(0, 5));
+    } catch (_) {
+      status('⚠ 浏览器存储空间较满，建议尽快「↓ 备份 JSON」');
+    }
+  }, 900);
 }
 
 function activePage() { return doc.pages[current] || doc.pages[0]; }
@@ -409,15 +413,61 @@ function setPaperSize(w, h) {
 }
 
 // --- Image Loading & Non-Destructive Processing Engine ---
+function trimImgCache() {
+  if (imgCache.size <= 60) return;
+  const keep = new Set((activePage()?.elements || []).filter(e => e.type === 'image' && e.src).map(e => e.src));
+  for (const key of imgCache.keys()) {
+    if (imgCache.size <= 45) break;
+    if (!keep.has(key)) imgCache.delete(key);
+  }
+}
 function getImg(src) {
   if (!src) return Promise.resolve(null);
-  if (imgCache.has(src)) return Promise.resolve(imgCache.get(src));
+  if (imgCache.has(src)) {
+    const hit = imgCache.get(src);
+    imgCache.delete(src);
+    imgCache.set(src, hit);
+    return Promise.resolve(hit);
+  }
   return new Promise(resolve => {
     const img = new Image();
-    img.onload = () => { imgCache.set(src, img); resolve(img); };
+    img.onload = () => { imgCache.set(src, img); trimImgCache(); resolve(img); };
     img.onerror = () => resolve(null);
     img.src = src;
   });
+}
+async function compressImageFile(file, maxSide = 2200, quality = 0.88) {
+  if (!file || !file.type?.startsWith('image/')) return null;
+  if (/svg/i.test(file.type)) {
+    return new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(file); });
+  }
+  const objUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise(resolve => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => resolve(null);
+      im.src = objUrl;
+    });
+    if (!img) return null;
+    const needScale = img.width > maxSide || img.height > maxSide;
+    const needReencode = needScale || file.size > 900 * 1024;
+    if (!needReencode) {
+      return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(file); });
+    }
+    const ratio = Math.min(1, maxSide / Math.max(img.width, img.height));
+    const cw = Math.max(1, Math.round(img.width * ratio));
+    const ch = Math.max(1, Math.round(img.height * ratio));
+    const off = document.createElement('canvas');
+    off.width = cw; off.height = ch;
+    off.getContext('2d').drawImage(img, 0, 0, cw, ch);
+    const keepAlpha = file.type === 'image/png' || file.type === 'image/webp';
+    const dataUrl = keepAlpha ? off.toDataURL('image/png') : off.toDataURL('image/jpeg', quality);
+    off.width = 0; off.height = 0;
+    return dataUrl;
+  } finally {
+    URL.revokeObjectURL(objUrl);
+  }
 }
 
 const cropOf = el => {
@@ -519,9 +569,10 @@ function cachePhotoEffect(el, item) {
   effectCache.delete(el);
   effectCache.set(el, item);
   effectCachePixels += item.buffer.width * item.buffer.height;
-  while ((effectCachePixels > 8000000 || effectCache.size > 20) && effectCache.size > 1) {
+  while ((effectCachePixels > 4000000 || effectCache.size > 12) && effectCache.size > 1) {
     const first = effectCache.keys().next().value, expired = effectCache.get(first);
     effectCachePixels -= expired.buffer.width * expired.buffer.height;
+    expired.buffer.width = 0; expired.buffer.height = 0;
     effectCache.delete(first);
   }
 }
@@ -1027,9 +1078,31 @@ function redrawSync() {
   }
 }
 
+let rafRedraw = 0;
+function scheduleRedrawSync() {
+  if (rafRedraw) return;
+  rafRedraw = requestAnimationFrame(() => {
+    rafRedraw = 0;
+    redrawSync();
+  });
+}
+
+function cloneElementLight(el) {
+  const c = { ...el };
+  if (el.crop) c.crop = { ...el.crop };
+  if (el.frame) c.frame = { ...el.frame };
+  if (el.stroke) c.stroke = { ...el.stroke };
+  if (el.shadow) c.shadow = { ...el.shadow };
+  if (el.adjustments) c.adjustments = { ...el.adjustments };
+  return c;
+}
+function clonePageLight(page) {
+  return { ...page, elements: (page.elements || []).map(cloneElementLight) };
+}
+
 function snapshot() {
-  undoStack.push(clone(activePage()));
-  if (undoStack.length > 35) undoStack.shift();
+  undoStack.push(clonePageLight(activePage()));
+  if (undoStack.length > 20) undoStack.shift();
   redoStack = [];
 }
 function modify(fn) {
@@ -1043,14 +1116,14 @@ function modify(fn) {
 }
 function undo() {
   if (!undoStack.length) return;
-  redoStack.push(clone(activePage()));
+  redoStack.push(clonePageLight(activePage()));
   doc.pages[current] = undoStack.pop();
   selectOnly(-1);
   persist(); redraw(); renderProps();
 }
 function redo() {
   if (!redoStack.length) return;
-  undoStack.push(clone(activePage()));
+  undoStack.push(clonePageLight(activePage()));
   doc.pages[current] = redoStack.pop();
   selectOnly(-1);
   persist(); redraw(); renderProps();
@@ -1501,7 +1574,7 @@ function renderProps() {
 
   const bgRow = document.createElement('div'); bgRow.className = 'plog-bg-row';
   const bgPick = document.createElement('input'); bgPick.type = 'color'; bgPick.value = activePage().bg || '#f6f4f0';
-  bgPick.oninput = e => { activePage().bg = e.target.value; redrawSync(); };
+  bgPick.oninput = e => { activePage().bg = e.target.value; scheduleRedrawSync(); };
   bgPick.onchange = e => { const v = e.target.value; modify(() => { activePage().bg = v; }); };
   const patSel = document.createElement('select');
   PLOG_BG_PATTERNS.forEach(([v, lbl]) => { const o = document.createElement('option'); o.value = v; o.textContent = lbl; patSel.append(o); });
@@ -2002,7 +2075,7 @@ canvas.addEventListener('pointerdown', e => {
   }
   const group = selectedEntries().filter(x => !x.el.locked).map(x => ({ idx: x.i, origX: x.el.x, origY: x.el.y }));
   snapshot();
-  drag = { mode: found.mode, start: p, orig: clone(arr[selected]), group };
+  drag = { mode: found.mode, start: p, orig: cloneElementLight(arr[selected]), group };
   try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
   redrawSync(); renderProps();
 });
@@ -2012,14 +2085,14 @@ canvas.addEventListener('pointermove', e => {
     const last = doodlePts[doodlePts.length - 1];
     if (!last || Math.hypot(p.x - last[0], p.y - last[1]) >= 2) {
       doodlePts.push([p.x, p.y]);
-      redrawSync();
+      scheduleRedrawSync();
     }
     return;
   }
   if (marquee) {
     marquee.x1 = p.x;
     marquee.y1 = p.y;
-    redrawSync();
+    scheduleRedrawSync();
     return;
   }
   if (!drag) return;
@@ -2054,9 +2127,10 @@ canvas.addEventListener('pointermove', e => {
       const q = localPoint(o, p); el.h = Math.max(40, q.y - o.y);
     }
   }
-  redrawSync();
+  scheduleRedrawSync();
 });
 canvas.addEventListener('pointerup', () => {
+  if (rafRedraw) { cancelAnimationFrame(rafRedraw); rafRedraw = 0; }
   if (doodleMode && doodlePts) {
     const pts = doodlePts; doodlePts = null;
     commitDoodleStroke(pts);
@@ -2104,20 +2178,22 @@ async function exportCurrentPage() {
   try {
     const fmt = $('exportFormat').value === 'jpeg' ? 'jpeg' : 'png';
     const rawScale = Number($('exportScale').value) || 1;
-    const scale = Math.min(rawScale, 8192 / Math.max(W(), H()));
+    const scale = Math.min(rawScale, 6000 / Math.max(W(), H()));
     await document.fonts.ready.catch(() => {});
     await ensureImages(activePage());
     const out = document.createElement('canvas');
     out.width = Math.round(W() * scale);
     out.height = Math.round(H() * scale);
+    const outW = out.width, outH = out.height;
     paintPage(activePage(), out, scale);
     const blob = await new Promise((res, rej) => out.toBlob(b => b ? res(b) : rej(Error('生成图片失败')), `image/${fmt}`, fmt === 'jpeg' ? 0.94 : 1));
+    out.width = 0; out.height = 0;
     const url = URL.createObjectURL(blob), a = document.createElement('a');
     const title = (getActiveProject()?.title || 'Plog').replace(/[\\/:*?"<>|\s]+/g, '_');
-    a.href = url; a.download = `${title}_P${current + 1}_${out.width}x${out.height}.${fmt === 'jpeg' ? 'jpg' : 'png'}`;
+    a.href = url; a.download = `${title}_P${current + 1}_${outW}x${outH}.${fmt === 'jpeg' ? 'jpg' : 'png'}`;
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
-    status(`✓ 已导出当前页（${out.width} × ${out.height} ${fmt.toUpperCase()}）`);
+    status(`✓ 已导出当前页（${outW} × ${outH} ${fmt.toUpperCase()}）`);
   } catch (err) {
     alert('导出失败：' + err.message);
   } finally {
@@ -2214,7 +2290,7 @@ async function openGrid9ExportModal() {
     const mime = `image/${fmt}`;
     const quality = fmt === 'jpeg' ? 0.94 : 1;
     const rawScale = Number($('exportScale').value) || 1;
-    const scale = Math.min(rawScale, 8192 / Math.max(W(), H()));
+    const scale = Math.min(rawScale, 6000 / Math.max(W(), H()));
     await document.fonts.ready.catch(() => {});
     await ensureImages(activePage());
 
@@ -2236,10 +2312,12 @@ async function openGrid9ExportModal() {
       tc.width = tw; tc.height = th;
       tc.getContext('2d').drawImage(full, x0, y0, tw, th, 0, 0, tw, th);
       const blob = await new Promise((res, rej) => tc.toBlob(b => b ? res(b) : rej(Error('切图失败')), mime, quality));
+      tc.width = 0; tc.height = 0;
       const bytes = new Uint8Array(await blob.arrayBuffer());
       const url = URL.createObjectURL(blob);
       tiles.push({ index: r.index, width: tw, height: th, url, bytes, filename: `${title}_P${current + 1}_0${r.index}.${ext}` });
     }
+    full.width = 0; full.height = 0;
 
     const backdrop = document.createElement('div');
     backdrop.className = 'photo-edit-backdrop';
@@ -2304,19 +2382,28 @@ async function openGrid9ExportModal() {
 
 function initPanelResizers() {
   const body = document.querySelector('.plog-body');
+  const topBar = document.querySelector('.plog-topbar');
   if (!body) return;
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(PANEL_KEY) || '{}'); } catch (_) {}
   let leftW = Number.isFinite(saved.left) ? saved.left : 196;
   let rightW = Number.isFinite(saved.right) ? saved.right : 316;
+  let topH = saved.top === null || saved.top === undefined || !Number.isFinite(Number(saved.top)) ? null : Number(saved.top);
   let lastLeft = leftW > 0 ? leftW : 196;
   let lastRight = rightW > 0 ? rightW : 316;
+  let lastTop = (topH && topH > 0) ? topH : 64;
 
   const apply = (save = true) => {
     body.style.setProperty('--left-w', leftW + 'px');
     body.style.setProperty('--right-w', rightW + 'px');
+    if (topBar) {
+      topBar.classList.toggle('is-collapsed', topH === 0);
+      topBar.classList.toggle('is-sized', topH !== null && topH > 0);
+      if (topH !== null && topH > 0) topBar.style.setProperty('--top-h', topH + 'px');
+      else topBar.style.removeProperty('--top-h');
+    }
     $('focusCanvasBtn')?.classList.toggle('active', leftW === 0 && rightW === 0);
-    if (save) try { localStorage.setItem(PANEL_KEY, JSON.stringify({ left: leftW, right: rightW })); } catch (_) {}
+    if (save) try { localStorage.setItem(PANEL_KEY, JSON.stringify({ left: leftW, right: rightW, top: topH })); } catch (_) {}
   };
   apply(false);
 
@@ -2361,6 +2448,41 @@ function initPanelResizers() {
 
   wireHandle('resizerLeft', true);
   wireHandle('resizerRight', false);
+
+  const topRes = $('resizerTop');
+  if (topRes && topBar) {
+    topRes.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startY = e.clientY;
+      const startH = topH !== null ? topH : Math.round(topBar.getBoundingClientRect().height);
+      topRes.classList.add('dragging');
+      try { topRes.setPointerCapture(e.pointerId); } catch (_) {}
+      const onMove = ev => {
+        const raw = startH + (ev.clientY - startY);
+        if (raw < 26) {
+          topH = 0;
+        } else {
+          topH = clamp(Math.round(raw), 44, 220);
+          lastTop = topH;
+        }
+        apply(false);
+      };
+      const onUp = () => {
+        topRes.classList.remove('dragging');
+        apply(true);
+        topRes.removeEventListener('pointermove', onMove);
+        topRes.removeEventListener('pointerup', onUp);
+        topRes.removeEventListener('pointercancel', onUp);
+      };
+      topRes.addEventListener('pointermove', onMove);
+      topRes.addEventListener('pointerup', onUp);
+      topRes.addEventListener('pointercancel', onUp);
+    });
+    topRes.addEventListener('dblclick', () => {
+      topH = topH === 0 ? null : 0;
+      apply(true);
+    });
+  }
 
   if ($('focusCanvasBtn')) {
     $('focusCanvasBtn').onclick = () => {
@@ -2541,16 +2663,15 @@ async function showDoubleExposureModal() {
     backdrop.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === state.tool));
   };
 
-  const loadUpload = (file, targetKind) => new Promise(res => {
-    const fr = new FileReader();
-    fr.onload = async () => {
-      const im = await getImg(fr.result);
-      if (targetKind === 'base') { baseImg = im; initMask(); qa('[data-pick="base"]').textContent = '🖼 更换底图'; }
-      else { overlayImg = im; qa('[data-pick="overlay"]').textContent = '✨ 更换叠加图'; }
-      drawPreview(); res();
-    };
-    fr.readAsDataURL(file);
-  });
+  const loadUpload = async (file, targetKind) => {
+    const src = await compressImageFile(file, 2000, 0.9);
+    if (!src) return;
+    const im = await getImg(src);
+    if (!im) return;
+    if (targetKind === 'base') { baseImg = im; initMask(); qa('[data-pick="base"]').textContent = '🖼 更换底图'; }
+    else { overlayImg = im; qa('[data-pick="overlay"]').textContent = '✨ 更换叠加图'; }
+    drawPreview();
+  };
 
   qa('[data-pick="base"]').onclick = () => qa('[data-file="base"]').click();
   qa('[data-pick="overlay"]').onclick = () => qa('[data-file="overlay"]').click();
@@ -2783,7 +2904,7 @@ function showCrossCanvasModal() {
     modify(() => {
       const nextIds = new Set();
       for (const { el } of items) {
-        const copy = clone(el);
+        const copy = cloneElementLight(el);
         copy.id = uid(); copy.locked = false; copy.hidden = false;
         copy.x = clamp(copy.x, 0, Math.max(0, W() - Math.min(copy.w, W())));
         copy.y = clamp(copy.y, 0, Math.max(0, H() - Math.min(copy.h, H())));
@@ -2880,7 +3001,8 @@ function bind() {
   $('photoInput').onchange = async e => {
     const files = Array.from(e.target.files || []); e.target.value = '';
     for (const file of files) {
-      const src = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(file); });
+      const src = await compressImageFile(file, 2200, 0.88);
+      if (!src) continue;
       const img = await getImg(src);
       if (!img) continue;
       const w = Math.min(Math.round(W() * 0.55), img.width), h = Math.round(w * img.height / img.width);
@@ -2891,7 +3013,8 @@ function bind() {
     const file = e.target.files?.[0]; e.target.value = '';
     const el = activePage().elements[selected];
     if (!file || el?.type !== 'image') return;
-    const src = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(file); });
+    const src = await compressImageFile(file, 2200, 0.88);
+    if (!src) return;
     await getImg(src);
     modify(() => { el.src = src; delete el.role; el.crop = { x: 0, y: 0, w: 1, h: 1 }; el.zoom = 1; el.offsetX = 0; el.offsetY = 0; });
   };
@@ -2968,7 +3091,7 @@ function bind() {
     modify(() => {
       const nextIds = new Set();
       for (const { el } of items) {
-        const copy = clone(el);
+        const copy = cloneElementLight(el);
         copy.id = uid(); copy.locked = false; copy.x += 28; copy.y += 28;
         activePage().elements.push(copy);
         nextIds.add(copy.id);
@@ -3037,8 +3160,8 @@ function bind() {
     const files = Array.from(e.target.files || []); e.target.value = '';
     if (!files.length) return;
     for (const f of files) {
-      const src = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
-      userStickers.unshift({ id: 'u_' + uid(), name: f.name.replace(/\.[^.]+$/, ''), src });
+      const src = await compressImageFile(f, 1200, 0.9);
+      if (src) userStickers.unshift({ id: 'u_' + uid(), name: f.name.replace(/\.[^.]+$/, ''), src });
     }
     if (db) await writeDb(STICKERS_KEY, userStickers);
     activeStickerFolder = 'user';
@@ -3083,7 +3206,8 @@ function bind() {
       const f = imgItem.getAsFile();
       if (f) {
         e.preventDefault();
-        const src = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
+        const src = await compressImageFile(f, 2200, 0.88);
+        if (!src) return;
         const img = await getImg(src);
         if (img) {
           const w = Math.min(Math.round(W() * 0.55), img.width), h = Math.round(w * img.height / img.width);

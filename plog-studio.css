@@ -7,7 +7,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 .plog-app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
 
-.plog-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:9px 14px;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 2px 10px #22123308;z-index:10}
+.plog-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:9px 14px;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 2px 10px #22123308;z-index:10;flex:none}
+.plog-topbar.is-sized{height:var(--top-h);min-height:0;overflow-y:auto;overflow-x:hidden;align-content:flex-start}
+.plog-topbar.is-collapsed{height:0!important;padding-top:0!important;padding-bottom:0!important;border-bottom:0!important;overflow:hidden!important}
+.panel-resizer-h{height:6px;width:100%;cursor:row-resize;background:transparent;position:relative;z-index:12;flex:none;touch-action:none;user-select:none}
+.panel-resizer-h::after{content:'';position:absolute;inset:2px 24px;border-radius:2px;background:transparent;transition:background .15s}
+.panel-resizer-h:hover::after,.panel-resizer-h.dragging::after{background:#b99bc9}
 .plog-brand{display:flex;align-items:center;gap:8px;margin-right:4px}
 .plog-logo{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--accent);color:var(--accent-gold);font-size:15px}
 .plog-brand b{display:block;font-size:14px;line-height:1.15}
