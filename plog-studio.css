@@ -10,9 +10,10 @@ button{cursor:pointer}
 .plog-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:9px 14px;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 2px 10px #22123308;z-index:10;flex:none}
 .plog-topbar.is-sized{height:var(--top-h);min-height:0;overflow-y:auto;overflow-x:hidden;align-content:flex-start}
 .plog-topbar.is-collapsed{height:0!important;padding-top:0!important;padding-bottom:0!important;border-bottom:0!important;overflow:hidden!important}
-.panel-resizer-h{height:6px;width:100%;cursor:row-resize;background:transparent;position:relative;z-index:12;flex:none;touch-action:none;user-select:none}
-.panel-resizer-h::after{content:'';position:absolute;inset:2px 24px;border-radius:2px;background:transparent;transition:background .15s}
-.panel-resizer-h:hover::after,.panel-resizer-h.dragging::after{background:#b99bc9}
+.panel-resizer-h{height:10px;width:100%;cursor:row-resize;background:#f2ebf6;border-bottom:1px solid #dfd3e6;position:relative;z-index:12;flex:none;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.panel-resizer-h::after{content:'';width:56px;height:4px;border-radius:99px;background:#bba6c8;transition:background .15s,width .15s}
+.panel-resizer-h:hover,.panel-resizer-h.dragging{background:#e9ddf0}
+.panel-resizer-h:hover::after,.panel-resizer-h.dragging::after{background:#6c467c;width:84px}
 .plog-brand{display:flex;align-items:center;gap:8px;margin-right:4px}
 .plog-logo{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--accent);color:var(--accent-gold);font-size:15px}
 .plog-brand b{display:block;font-size:14px;line-height:1.15}
@@ -35,13 +36,14 @@ button{cursor:pointer}
 .size-inputs input{width:64px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;text-align:center;font-variant-numeric:tabular-nums}
 .plog-actions{margin-left:auto}
 
-.plog-body{flex:1;min-height:0;display:grid;grid-template-columns:var(--left-w,196px) 6px minmax(0,1fr) 6px var(--right-w,316px)}
+.plog-body{flex:1;min-height:0;display:grid;grid-template-columns:var(--left-w,196px) 8px minmax(0,1fr) 8px var(--right-w,316px)}
 .plog-left,.plog-right{background:var(--surface);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
 .plog-left{border-right:1px solid var(--line)}
 .plog-right{border-left:1px solid var(--line)}
-.panel-resizer{width:6px;cursor:col-resize;background:transparent;position:relative;z-index:5;touch-action:none;user-select:none}
-.panel-resizer::after{content:'';position:absolute;inset:12px 2px;border-radius:2px;background:transparent;transition:background .15s}
-.panel-resizer:hover::after,.panel-resizer.dragging::after{background:#b99bc9}
+.panel-resizer{width:8px;cursor:col-resize;background:#f3edf7;position:relative;z-index:5;touch-action:none;user-select:none;transition:background .15s}
+.panel-resizer::after{content:'';position:absolute;width:4px;height:44px;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:99px;background:#cbb9d6;transition:background .15s,height .15s}
+.panel-resizer:hover,.panel-resizer.dragging{background:#eadff0}
+.panel-resizer:hover::after,.panel-resizer.dragging::after{background:#6c467c;height:68px}
 .ghost-btn.active{background:var(--accent);color:var(--accent-gold);border-color:#b59767}
 .panel-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);font-size:12px}
 .panel-head small{color:var(--ink-2)}
